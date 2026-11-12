@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZDiesil</title>
+<link rel="stylesheet" href="zd.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="logo-app"><span>Zão</span><span>Diesel</span></div>
+  <small>ZDiesil • INJEÇÃO ELETRÔNICA</small>
+</header>
+
+<main class="folha">
+  <div class="topo">
+    <div class="logo"><h1><span>Zão</span> <span>Diesel</span></h1><small>INJEÇÃO ELETRÔNICA</small><p>BOMBAS E BICOS INJETORES</p></div>
+    <div class="orcamento"><b>ORÇAMENTO</b><div class="num">Nº <span id="numOrc">0726</span></div><div class="data">Data: <span id="dataOrc"></span></div></div>
+  </div>
+  <div class="contato">Fone: <b>99191-2610 / 99210-7642</b><br>E-mail: genilson.zao@hotmail.com<br>Av. Cícero Ávila, 1495 - Olga Moreira - Promissão - Paragominas - PA</div>
+
+  <div class="tabs">
+    <button id="tabOrc" class="ativo" onclick="mostrarAba('orc')">📄 Orçamento</button>
+    <button id="tabProd" onclick="mostrarAba('prod')">📦 Produtos</button>
+    <button id="tabVend" onclick="mostrarAba('vend')">👤 Funcionários</button>
+    <button id="tabHist" onclick="mostrarAba('hist')">🕒 Histórico</button>
+    <button id="tabCli" onclick="mostrarAba('cli')">👤 Clientes</button>
+  </div>
+
+  <div id="aba-orc">
+    <div class="dados">
+      <div class="linha"><div class="campo u"><span>Nome:</span> <input id="cliente" value="Renato Dalla"></div></div>
+      <div class="linha"><div class="campo u"><span>Endereço:</span> <input id="endereco"></div><div class="campo"><span>Fone:</span> <input id="foneCliente"></div></div>
+      <div class="linha"><div class="campo"><span>Cidade:</span> <input id="cidade"></div><div class="campo"><span>Estado:</span> <input id="estado"></div></div>
+      <div class="linha"><div class="campo"><span>Tipo de Motor:</span> <input id="motor" value="OM 366"></div><div class="campo"><span>Veículo:</span> <input id="veiculo"></div></div>
+      <div class="linha"><div class="campo u"><span>Preenchido por / Funcionário:</span> <select id="vendedorSel"><option value="">-- escolher funcionário --</option></select> <input id="vendedorManual" placeholder="ou digite o nome aqui"></div></div>
+    </div>
+    <div class="add-row">
+      <select id="selProduto"><option value="">-- escolher produto do cadastro --</option></select>
+      <input id="qtdAdd" type="number" value="1" min="1">
+      <button class="btn-add" onclick="adicionarProduto()">+ Adicionar Produto</button>
+    </div>
+    <button class="btn-add dark" onclick="adicionarLinhaVazia()">+ Adicionar linha manual / Mão de obra</button>
+    <table>
+      <thead><tr><th>Quant.</th><th>Ref.</th><th>Discriminação</th><th>P. Unit.</th><th>TOTAL</th><th class="col-acao"></th></tr></thead>
+      <tbody id="tbodyItens"></tbody>
+    </table>
+    <div class="totais">Subtotal: R$ <span id="subtotal">0,00</span><br>Desconto: <input id="descontoPct" type="number" value="0" min="0" max="100" oninput="calcular()"> % &nbsp; = R$ <span id="valorDesconto">0,00</span></div>
+    <div class="total-geral">TOTAL R$ <span id="totalGeral">0,00</span></div>
+    <div class="assinatura"><div>ZÃO DIESEL<br><small>Responsável</small></div><div><span id="nomeAssinatura">CLIENTE</span><br><small>Assinatura</small></div></div>
+    <div class="rodape">Zão Diesel - Bombas e Bicos Injetores - Paragominas / PA - Fone: 99191-2610 / 99210-7642</div>
+  </div>
+
+  <div id="aba-prod" style="display:none;">
+    <div class="box-cad"><h3>Cadastrar novo produto</h3>
+      <div class="grid"><input id="pNome" placeholder="Nome do item *"><input id="pCodigo" placeholder="Código / Nº de Série"><input id="pLote" placeholder="Lote"><input id="pValor" type="number" step="0.01" placeholder="Valor unitário *"></div>
+      <button class="btn-add" onclick="salvarProduto()">Salvar Produto</button>
+    </div>
+    <div class="box-cad"><h3>Produtos cadastrados</h3><div class="lista" id="listaProdutos"></div></div>
+  </div>
+
+  <div id="aba-vend" style="display:none;">
+    <div class="box-cad"><h3>Cadastrar funcionário</h3>
+      <div class="grid"><input id="vNome" placeholder="Nome completo *"><input id="vFone" placeholder="Fone / WhatsApp"></div>
+      <button class="btn-add" onclick="salvarFuncionario()">Salvar Funcionário</button>
+    </div>
+    <div class="box-cad"><h3>Funcionários cadastrados</h3><div class="lista" id="listaVendedores"></div></div>
+  </div>
+
+  <div id="aba-hist" style="display:none;">
+    <div class="box-cad">
+      <h3>Histórico de Orçamentos</h3>
+      <input id="buscaHist" placeholder="🔍 Buscar por nome, número ou motor..." oninput="filtrarHistorico()" style="width:100%;padding:11px;border:1px solid #ccc;border-radius:10px;">
+      <button class="btn-add" onclick="carregarHistorico()">🔄 Atualizar lista</button>
+    </div>
+    <div id="listaHistorico"></div>
+  </div>
+
+  <div id="aba-cli" style="display:none;">
+    <div class="box-cad"><h3>Cadastrar cliente</h3>
+      <div class="grid">
+        <input id="cNome" placeholder="Nome / Razão Social *">
+        <input id="cDoc" placeholder="CPF ou CNPJ *" maxlength="18" oninput="mascaraDoc(this)">
+        <input id="cFone" placeholder="Fone / WhatsApp">
+        <input id="cEndereco" placeholder="Endereço">
+        <input id="cCidade" placeholder="Cidade">
+        <input id="cEstado" placeholder="Estado">
+      </div>
+      <button class="btn-add" onclick="salvarCliente()">Salvar Cliente</button>
+    </div>
+    <div class="box-cad"><h3>Clientes cadastrados</h3><div class="lista" id="listaClientes"></div></div>
+  </div>
+</main>
+
+<nav class="acoes">
+  <button class="btn-print" onclick="window.print()">🖨️ PDF</button>
+  <button class="btn-wa" onclick="enviarWhatsApp()">💬 WhatsApp</button>
+  <button class="btn-share" onclick="compartilhar()">↗️ Compartilhar</button>
+  <button class="btn-novo" onclick="novoOrcamento()">➕ Novo</button>
+</nav>
+
+<script src="zd.js"></script>
+</body>
+</html>
