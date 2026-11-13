@@ -1,8 +1,58 @@
+const API_URL = 'https://script.google.com/macros/s/AKfycbyrQupOirl8tGA1oT6yirFvACSw-UBtAgILdgE4AZMtd4yju1rC0NJNdKRVJ1LA9bg6/exec';
+
+// LEITURA com JSONP - não dá Failed to fetch
+function apiLeitura(acao){
+  return new Promise((resolve, reject)=>{
+    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+    window[cb] = (dados)=>{
+      delete window[cb];
+      script.remove();
+      if(dados.erro) reject(new Error(dados.erro));
+      else resolve(dados);
+    };
+    const script = document.createElement('script');
+    script.src = API_URL + '?acao=' + acao + '&callback=' + cb + '&_=' + Date.now();
+    script.onerror = ()=>{ delete window[cb]; script.remove(); reject(new Error('Falha ao conectar')); };
+    document.body.appendChild(script);
+  });
+}
+
+// SALVAR com no-cors - manda e não espera resposta
+async function api(acao, dados, cod){
+  await fetch(API_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({acao, dados, cod})
+  });
+  if(acao==='salvarProduto'){
+    const max = produtos.length ? Math.max(...produtos.map(p=>parseInt(p.cod)||0)) : 0;
+    return {cod: max+1};
+  }
+  if(acao==='salvarFuncionario'){
+    const max = vendedores.length ? Math.max(...vendedores.map(v=>parseInt(v.mat)||0)) : 0;
+    return {mat: max+1};
+  }
+  return {ok:true};
+}
+
 let produtos = [];
 let vendedores = [];
 let clientes = [];
 let historico = [];
-let ultimoNum = 725;
+let ultimoNum = 0;
+let produtoSelecionadoTop = null;
+
+function anoAtual(){ return new Date().getFullYear(); }
+function formatarNum(seq){ return 'ZD-' + anoAtual() + '.' + String(seq).padStart(4,'0'); }
+function extrairSeq(numero){
+  if(!numero) return 0;
+  const m = String(numero).match(/(\d{4})\s*$/);
+  return m ? parseInt(m[1]) : (parseInt(numero)||0);
+}
+function proximoNum(){
+  return formatarNum(extrairSeq(document.getElementById('numOrc').innerText) + 1);
+}
 
 function fmt(v){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -19,31 +69,94 @@ function mostrarAba(q){
   document.getElementById('tabCli').className = q==='cli'?'ativo':'';
 }
 
+// ===== ÚNICO getVendedor - SEM vendedorManual =====
+function getVendedor(){
+  const el = document.getElementById('vendedorSel');
+  return el ? el.value || '' : '';
+}
+
+function filtrarProdutosTop(){
+  const termo = document.getElementById('buscaProdutoTop').value.trim().toLowerCase();
+  const box = document.getElementById('listaBuscaProduto');
+  if(!termo){ box.style.display='none'; box.innerHTML=''; return; }
+  const achados = produtos.filter(p => (p.cod||'').toString().toLowerCase().includes(termo) || (p.nome||'').toLowerCase().includes(termo) || (p.referencia||'').toLowerCase().includes(termo));
+  if(!achados.length){ box.style.display='block'; box.innerHTML='<div>Nenhum produto encontrado</div>'; return; }
+  box.style.display='block';
+  box.innerHTML = achados.map(p=>{
+    const idx = produtos.indexOf(p);
+    return `<div onclick="selecionarProdutoTop(${idx})"><b>${p.nome}</b> | Cód: ${p.cod||'-'} | Ref: ${p.referencia||'-'} | Lote: ${p.lote||'-'} | Saldo: ${p.saldo||0} | R$ ${fmt(p.valor)}</div>`;
+  }).join('');
+}
+function selecionarProdutoTop(idx){
+  produtoSelecionadoTop = idx;
+  document.getElementById('listaBuscaProduto').style.display='none';
+  document.getElementById('listaBuscaProduto').innerHTML='';
+  document.getElementById('buscaProdutoTop').value = produtos[idx].nome;
+  adicionarProduto();
+}
+
+function filtrarClientesTop(){
+  const termo = document.getElementById('cliente').value.trim().toLowerCase();
+  const box = document.getElementById('listaBuscaCliente');
+  if(!termo){ box.style.display='none'; box.innerHTML=''; return; }
+  const achados = clientes.filter(c => (c.cod||'').toString().toLowerCase().includes(termo) || (c.nome||'').toLowerCase().includes(termo));
+  if(!achados.length){ box.style.display='block'; box.innerHTML='<div>Nenhum cliente encontrado</div>'; return; }
+  box.style.display='block';
+  box.innerHTML = achados.map(c=>{
+    const idx = clientes.indexOf(c);
+    return `<div onclick="selecionarClienteTop(${idx})"><b>${c.nome}</b> | Cod: ${c.cod||'-'} | ${c.fone||''} | ${c.cidade||''}/${c.estado||''}</div>`;
+  }).join('');
+}
+function selecionarClienteTop(idx){
+  const c = clientes[idx];
+  if(!c) return;
+  document.getElementById('listaBuscaCliente').style.display='none';
+  document.getElementById('listaBuscaCliente').innerHTML='';
+  document.getElementById('cliente').value = c.nome;
+  usarCliente(idx);
+}
+function usarCliente(i){
+  const c = clientes[i];
+  if(!c) return;
+  document.getElementById('cliente').value = c.nome || '';
+  document.getElementById('foneCliente').value = c.fone || '';
+  document.getElementById('endereco').value = c.endereco || '';
+  document.getElementById('cidade').value = c.cidade || '';
+  document.getElementById('estado').value = c.estado || '';
+  mostrarAba('orc');
+}
+
+// Fecha a lista quando clica fora
+document.addEventListener('click', (e)=>{
+  const boxC = document.getElementById('listaBuscaCliente');
+  const boxP = document.getElementById('listaBuscaProduto');
+  if(boxC && !e.target.closest('#cliente') && !e.target.closest('#listaBuscaCliente')) boxC.style.display='none';
+  if(boxP && !e.target.closest('#buscaProdutoTop') && !e.target.closest('#listaBuscaProduto')) boxP.style.display='none';
+});
+
 function renderProdutos(){
-  const sel=document.getElementById('selProduto'); sel.innerHTML='<option value="">-- escolher produto do cadastro --</option>';
-  produtos.forEach((p,i)=>{ sel.innerHTML+=`<option value="${i}">${p.nome} - R$ ${fmt(p.valor)} ${p.codigo?' - '+p.codigo:''}</option>`; });
-  document.getElementById('listaProdutos').innerHTML = produtos.length? produtos.map((p,i)=>`<div><span><b>${p.nome}</b> | Cód: ${p.codigo||'-'} | Lote: ${p.lote||'-'} | R$ ${fmt(p.valor)}</span><button onclick="excluirProduto('${p.nome}')">X</button></div>`).join('') : 'Nenhum produto ainda.';
+  document.getElementById('listaProdutos').innerHTML = produtos.length? produtos.map((p,i)=>`<div><span><b>${p.nome}</b> | CodProduto: ${p.cod||'-'} | Ref: ${p.referencia||'-'} | Lote: ${p.lote||'-'} | Validade: ${p.validade||'-'} | Saldo: ${p.saldo||0} | R$ ${fmt(p.valor)}</span><button onclick="excluirProduto('${p.cod}')">X</button></div>`).join('') : 'Nenhum produto ainda.';
 }
 function renderVendedores(){
   const sel=document.getElementById('vendedorSel'); sel.innerHTML='<option value="">-- escolher funcionário --</option>';
   vendedores.forEach(v=>{ sel.innerHTML+=`<option value="${v.nome}">${v.nome}</option>`; });
-  document.getElementById('listaVendedores').innerHTML = vendedores.length? vendedores.map(v=>`<div><span><b>${v.nome}</b> ${v.fone?' - '+v.fone:''}</span><button onclick="excluirFuncionario('${v.nome}')">X</button></div>`).join('') : 'Nenhum funcionário ainda.';
+  document.getElementById('listaVendedores').innerHTML = vendedores.length? vendedores.map(v=>`<div><span><b>${v.nome}</b> | Mat: ${v.mat||'-'} ${v.fone?' - '+v.fone:''}</span><button onclick="excluirFuncionario('${v.mat}')">X</button></div>`).join('') : 'Nenhum funcionário ainda.';
 }
-function salvarProduto(){
+async function salvarProduto(){
   const nome=document.getElementById('pNome').value.trim().toUpperCase();
   const valor=parseFloat(document.getElementById('pValor').value);
   if(!nome||!valor){ alert('Preencha nome e valor'); return; }
-  const p={nome, codigo:document.getElementById('pCodigo').value.trim(), lote:document.getElementById('pLote').value.trim(), valor};
-  google.script.run.withSuccessHandler(()=>{ produtos.push(p); renderProdutos(); document.getElementById('pNome').value=''; document.getElementById('pCodigo').value=''; document.getElementById('pLote').value=''; document.getElementById('pValor').value=''; alert('Produto salvo na guia Produto!'); }).salvarProduto(p);
+  const p={nome, referencia:document.getElementById('pCodigo').value.trim(), lote:document.getElementById('pLote').value.trim(), valor};
+  try{ const r=await api('salvarProduto', p); p.cod=r.cod; p.saldo=0; produtos.push(p); renderProdutos(); document.getElementById('pNome').value=''; document.getElementById('pCodigo').value=''; document.getElementById('pLote').value=''; document.getElementById('pValor').value=''; alert('Produto salvo! Cod: '+r.cod); }catch(e){ alert('Erro: '+e.message); }
 }
-function excluirProduto(nome){ if(!confirm('Excluir?')) return; google.script.run.withSuccessHandler(()=>{ produtos=produtos.filter(p=>p.nome!==nome); renderProdutos(); }).excluirProduto(nome); }
-function salvarFuncionario(){
+async function excluirProduto(cod){ if(!confirm('Excluir?')) return; try{ await api('excluirProduto', null, cod); produtos=produtos.filter(p=>String(p.cod)!==String(cod)); renderProdutos(); }catch(e){ alert('Erro: '+e.message); } }
+async function salvarFuncionario(){
   const nome=document.getElementById('vNome').value.trim();
   if(!nome){ alert('Preencha o nome'); return; }
   const f={nome, fone:document.getElementById('vFone').value.trim()};
-  google.script.run.withSuccessHandler(()=>{ vendedores.push(f); renderVendedores(); document.getElementById('vNome').value=''; document.getElementById('vFone').value=''; alert('Funcionário salvo na guia Funcionario!'); }).salvarFuncionario(f);
+  try{ const r=await api('salvarFuncionario', f); f.mat=r.mat; vendedores.push(f); renderVendedores(); document.getElementById('vNome').value=''; document.getElementById('vFone').value=''; alert('Funcionário salvo! Mat: '+r.mat); }catch(e){ alert('Erro: '+e.message); }
 }
-function excluirFuncionario(nome){ if(!confirm('Excluir?')) return; google.script.run.withSuccessHandler(()=>{ vendedores=vendedores.filter(v=>v.nome!==nome); renderVendedores(); }).excluirFuncionario(nome); }
+async function excluirFuncionario(mat){ if(!confirm('Excluir?')) return; try{ await api('excluirFuncionario', null, mat); vendedores=vendedores.filter(v=>String(v.mat)!==String(mat)); renderVendedores(); }catch(e){ alert('Erro: '+e.message); } }
 
 function mascaraDoc(el){
   let v = el.value.replace(/\D/g,'');
@@ -88,43 +201,37 @@ function validaCNPJ(cnpj){
   return r == d.charAt(1);
 }
 function renderClientes(){
-  document.getElementById('listaClientes').innerHTML = clientes.length ? clientes.map((c,i)=>`<div><span><b>${c.nome}</b> | ${c.doc} | ${c.fone||'-'} | ${c.endereco||''} ${c.cidade||''}/${c.estado||''}</span><button onclick="usarCliente(${i})">Usar</button> <button onclick="excluirCliente(${i})">X</button></div>`).join('') : 'Nenhum cliente ainda.';
+  document.getElementById('listaClientes').innerHTML = clientes.length ? clientes.map((c,i)=>`<div><span><b>${c.nome}</b> | Cod: ${c.cod} | ${c.fone||'-'} | ${c.endereco||''} ${c.cidade||''}/${c.estado||''}</span><button onclick="usarCliente(${i})">Usar</button> <button onclick="excluirCliente('${c.cod}')">X</button></div>`).join('') : 'Nenhum cliente ainda.';
 }
-function salvarCliente(){
+async function salvarCliente(){
   const nome = document.getElementById('cNome').value.trim().toUpperCase();
   const doc = document.getElementById('cDoc').value.trim();
   if(!nome || !doc){ alert('Preencha nome e CPF/CNPJ'); return; }
   if(!validaDoc(doc)){ alert('CPF ou CNPJ inválido! Confere os números.'); return; }
-  const c = { nome, doc, fone: document.getElementById('cFone').value.trim(), endereco: document.getElementById('cEndereco').value.trim(), cidade: document.getElementById('cCidade').value.trim(), estado: document.getElementById('cEstado').value.trim() };
-  google.script.run.withSuccessHandler(()=>{ clientes.push(c); renderClientes(); document.getElementById('cNome').value=''; document.getElementById('cDoc').value=''; document.getElementById('cFone').value=''; document.getElementById('cEndereco').value=''; document.getElementById('cCidade').value=''; document.getElementById('cEstado').value=''; alert('Cliente salvo!'); }).salvarCliente(c);
+  const c = { cod: doc, nome, fone: document.getElementById('cFone').value.trim(), endereco: document.getElementById('cEndereco').value.trim(), cidade: document.getElementById('cCidade').value.trim(), estado: document.getElementById('cEstado').value.trim() };
+  try{ await api('salvarCliente', c); clientes.push(c); renderClientes(); document.getElementById('cNome').value=''; document.getElementById('cDoc').value=''; document.getElementById('cFone').value=''; document.getElementById('cEndereco').value=''; document.getElementById('cCidade').value=''; document.getElementById('cEstado').value=''; alert('Cliente salvo!'); }catch(e){ alert('Erro: '+e.message); }
 }
-function excluirCliente(i){
+async function excluirCliente(cod){
   if(!confirm('Excluir cliente?')) return;
-  const doc = clientes[i].doc;
-  google.script.run.withSuccessHandler(()=>{ clientes.splice(i,1); renderClientes(); }).excluirCliente(doc);
-}
-function usarCliente(i){
-  const c = clientes[i];
-  document.getElementById('cliente').value = c.nome;
-  document.getElementById('foneCliente').value = c.fone || '';
-  document.getElementById('endereco').value = c.endereco || '';
-  document.getElementById('cidade').value = c.cidade || '';
-  document.getElementById('estado').value = c.estado || '';
-  mostrarAba('orc');
-  calcular();
+  try{ await api('excluirCliente', null, cod); clientes=clientes.filter(c=>String(c.cod)!==String(cod)); renderClientes(); }catch(e){ alert('Erro: '+e.message); }
 }
 
 function adicionarProduto(){
-  const idx=document.getElementById('selProduto').value;
-  if(idx===''){ alert('Escolhe um produto'); return; }
-  const p=produtos[idx]; const qtd=parseFloat(document.getElementById('qtdAdd').value)||1;
-  adicionarLinha(qtd, p.codigo||'', p.nome, p.valor);
+  if(produtoSelecionadoTop===null || !produtos[produtoSelecionadoTop]){ alert('Busca e clica no produto primeiro'); return; }
+  const p=produtos[produtoSelecionadoTop]; const qtd=parseFloat(document.getElementById('qtdAdd').value)||1;
+  adicionarLinha(qtd, p.referencia||p.cod||'', p.nome, p.valor, true);
+  document.getElementById('buscaProdutoTop').value='';
+  produtoSelecionadoTop=null;
 }
-function adicionarLinhaVazia(){ adicionarLinha(1,'','',0); }
-function adicionarLinha(qtd, ref, desc, preco){
+
+function adicionarLinhaVazia(){ adicionarLinha(1,'','',0,false); }
+function adicionarLinha(qtd, ref, desc, preco, travado){
   const tb=document.getElementById('tbodyItens');
   const tr=document.createElement('tr');
-  tr.innerHTML=`<td><input type="number" value="${qtd}" min="0" oninput="calcular()"></td><td><input value="${ref}"></td><td><input class="desc-in" value="${desc}"></td><td><input type="number" step="0.01" value="${preco}" oninput="calcular()"></td><td class="total">0,00</td><td class="col-acao"><button class="btn-x" onclick="this.closest('tr').remove();calcular()">X</button></td></tr>`;
+  const ehMaoDeObra = String(desc||'').toUpperCase().includes('MAO DE OBRA') || String(desc||'').toUpperCase().includes('MÃO DE OBRA');
+  const travar = travado && !ehMaoDeObra;
+  const ro = travar ? 'readonly' : '';
+  tr.innerHTML=`<td><input type="number" value="${qtd}" min="0" oninput="calcular()"></td><td><input value="${ref}" ${ro}></td><td><input class="desc-in" value="${desc}" ${ro}></td><td><input type="number" step="0.01" value="${preco}" oninput="calcular()" ${ro}></td><td class="total">0,00</td><td class="col-acao"><button class="btn-x" onclick="this.closest('tr').remove();calcular()">X</button></td></tr>`;
   tb.appendChild(tr); calcular();
 }
 function calcular(){
@@ -139,11 +246,6 @@ function calcular(){
   document.getElementById('subtotal').innerText=fmt(sub);
   document.getElementById('valorDesconto').innerText=fmt(desc);
   document.getElementById('totalGeral').innerText=fmt(total);
-  document.getElementById('nomeAssinatura').innerText='CLIENTE - '+(document.getElementById('cliente').value||'CLIENTE');
-}
-function getVendedor(){
-  const m=document.getElementById('vendedorManual').value.trim();
-  return m || document.getElementById('vendedorSel').value || '';
 }
 function getItens(){
   let arr=[];
@@ -157,7 +259,6 @@ function textoOrcamento(){
   document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
     const q=tr.cells[0].querySelector('input').value||'';
     const d=tr.cells[2].querySelector('input').value||'';
-    const pu=tr.cells[3].querySelector('input').value||'';
     const t=tr.cells[4].innerText||'0,00';
     if(d) linhas.push(`${q}x ${d} - R$ ${t}`);
   });
@@ -183,7 +284,23 @@ async function compartilhar(){
   const t=textoOrcamento(); salvarOrcamentoAtual();
   if(navigator.share){ try{ await navigator.share({title:'Orçamento ZDiesil', text:t}); }catch(e){} } else enviarWhatsApp();
 }
-function salvarOrcamentoAtual(){
+
+async function salvarOrcamentoAtual(){
+  let achouMaoSemValor = false;
+  document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
+    const desc = tr.cells[2].querySelector('input').value.toUpperCase();
+    const preco = parseFloat(tr.cells[3].querySelector('input').value)||0;
+    if(desc.includes('MAO DE OBRA') || desc.includes('MÃO DE OBRA')){
+      if(!preco || preco <= 0){
+        achouMaoSemValor = true;
+        tr.cells[3].querySelector('input').focus();
+      }
+    }
+  });
+  if(achouMaoSemValor){
+    alert('Coloca o valor da MÃO DE OBRA antes de salvar!');
+    return false;
+  }
   const o={
     numero: document.getElementById('numOrc').innerText,
     data: document.getElementById('dataOrc').innerText,
@@ -195,32 +312,44 @@ function salvarOrcamentoAtual(){
     motor: document.getElementById('motor').value,
     veiculo: document.getElementById('veiculo').value,
     vendedor: getVendedor(),
+    execucao: document.getElementById('execucao').value,
     subtotal: document.getElementById('subtotal').innerText,
     descontoPct: document.getElementById('descontoPct').value,
     descontoValor: document.getElementById('valorDesconto').innerText,
     total: document.getElementById('totalGeral').innerText,
     itens: getItens()
   };
-  google.script.run.salvarOrcamento(o);
+  try{
+    await api('salvarOrcamento', o);
+    alert('Orçamento Nº ' + o.numero + ' salvo!');
+    ultimoNum = extrairSeq(o.numero);
+    document.getElementById('numOrc').innerText = formatarNum(ultimoNum + 1);
+    return true;
+  }catch(e){ alert('Erro ao salvar orçamento: '+e.message); return false; }
 }
-function novoOrcamento(){
+
+async function novoOrcamento(){
   if(!confirm('Gerar novo orçamento? Vai salvar o atual e subir o número.')) return;
-  salvarOrcamentoAtual();
-  ultimoNum++; 
-  document.getElementById('numOrc').innerText=String(ultimoNum).padStart(4,'0');
+  const salvou = await salvarOrcamentoAtual();
+  if(!salvou) return;
   document.getElementById('tbodyItens').innerHTML=''; document.getElementById('descontoPct').value=0;
-  document.getElementById('cliente').value=''; document.getElementById('motor').value=''; document.getElementById('vendedorManual').value='';
+  document.getElementById('cliente').value=''; document.getElementById('motor').value=''; document.getElementById('veiculo').value='';
+  document.getElementById('endereco').value=''; document.getElementById('foneCliente').value=''; document.getElementById('cidade').value=''; document.getElementById('estado').value='';
+  document.getElementById('buscaProdutoTop').value='';
+  document.getElementById('execucao').value='EM ESPERA';
   calcular(); window.scrollTo({top:0,behavior:'smooth'});
 }
-function carregarHistorico(){
-  google.script.run.withSuccessHandler(d=>{
-    historico = d || [];
+
+async function carregarHistorico(){
+  try{
+    const d = await apiLeitura('historico');
+    historico = Array.isArray(d) ? d : (d.historico || d.dados || []);
     renderHistorico(historico);
-  }).getHistorico();
+  }catch(e){ alert('Erro: '+e.message); }
 }
 function renderHistorico(lista){
   if(!lista || !lista.length){ document.getElementById('listaHistorico').innerHTML = 'Nenhum orçamento no histórico.'; return; }
-  document.getElementById('listaHistorico').innerHTML = lista.map((o,i)=>`<div class="box-cad"><b>Nº ${o.numero}</b> - ${o.data} - ${o.cliente} - ${o.motor||''} - <b>R$ ${o.total}</b> <button onclick="carregarOrcamentoHist(${i})">Abrir</button></div>`).join('');
+  document.getElementById('listaHistorico').innerHTML = lista.map((o,i)=>`<div class="box-cad"><b>Nº ${o.numero}</b> - ${o.data} - ${o.cliente} - ${o.motor||''} - ${o.execucao||''} - <b>R$ ${o.total}</b> <button onclick="carregarOrcamentoHist(${i})">Abrir</button></div>`).join('');
 }
 function filtrarHistorico(){
   const busca = document.getElementById('buscaHist').value.toLowerCase();
@@ -240,6 +369,7 @@ function carregarOrcamentoHist(i){
   document.getElementById('motor').value = o.motor || '';
   document.getElementById('veiculo').value = o.veiculo || '';
   document.getElementById('descontoPct').value = o.descontoPct || 0;
+  document.getElementById('execucao').value = o.execucao || 'EM ESPERA';
   document.getElementById('tbodyItens').innerHTML = '';
   (o.itens||[]).forEach(it=>adicionarLinha(it.qtd, it.ref, it.desc, it.preco));
   calcular();
@@ -247,15 +377,24 @@ function carregarOrcamentoHist(i){
 }
 
 document.getElementById('dataOrc').innerText=new Date().toLocaleDateString('pt-BR');
-google.script.run.withSuccessHandler(d=>{
-  produtos = d.produtos.length ? d.produtos : [
-    {nome:'ELEMENTOS',codigo:'',lote:'',valor:130},{nome:'BICOS INJETORES',codigo:'',lote:'',valor:140},{nome:'VÁLVULA DE PRESSÃO',codigo:'',lote:'',valor:85},{nome:'REPAROS',codigo:'',lote:'',valor:105},{nome:'PISTÃO',codigo:'',lote:'',valor:80},{nome:'MOLAS',codigo:'',lote:'',valor:70},{nome:'VÁLVULA DE RETORNO',codigo:'',lote:'',valor:160},{nome:'KIT DISCO, PINO, MOLA',codigo:'',lote:'',valor:110},{nome:'BUCHAS',codigo:'',lote:'',valor:60},{nome:'MÃO DE OBRA',codigo:'',lote:'',valor:450}
-  ];
+apiLeitura('dados').then(d=>{
+  produtos = d.produtos || [];
   vendedores = d.funcionarios || [];
   clientes = d.clientes || [];
-  ultimoNum = d.ultimoNum;
-  document.getElementById('numOrc').innerText=String(ultimoNum+1).padStart(4,'0');
+  ultimoNum = extrairSeq(d.ultimoNum);
+  document.getElementById('numOrc').innerText = formatarNum(ultimoNum + 1);
   renderProdutos(); renderVendedores(); renderClientes();
   [[6,'','ELEMENTOS',130],[6,'','BICOS INJETORES',140],[6,'','VÁLVULA DE PRESSÃO',85],[4,'','REPAROS',105],[1,'','PISTÃO',80],[1,'','MOLAS',70],[1,'','VÁLVULA DE RETORNO',160],[6,'','KIT DISCO, PINO, MOLA',110],[2,'','BUCHAS',60],[1,'','MÃO DE OBRA',450]].forEach(a=>adicionarLinha(a[0],a[1],a[2],a[3]));
   calcular();
-}).getDadosIniciais();
+}).catch(e=>alert('Erro ao carregar dados: '+e.message));
+
+let sensivelOn = false;
+function alternarSensivel(){
+  sensivelOn = !sensivelOn;
+  document.querySelectorAll('.linha.sensivel').forEach(l=>{
+    if(sensivelOn) l.classList.add('mostrar');
+    else l.classList.remove('mostrar');
+  });
+  const olho = document.getElementById('olhoDiscreto');
+  if(olho) olho.style.opacity = sensivelOn ? '0.9' : '0.2';
+}
