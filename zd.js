@@ -1,6 +1,6 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrQupOirl8tGA1oT6yirFvACSw-UBtAgILdgE4AZMtd4yju1rC0NJNdKRVJ1LA9bg6/exec';
 
-// LEITURA com JSONP - não dá Failed to fetch
+// LEITURA com JSONP
 function apiLeitura(acao){
   return new Promise((resolve, reject)=>{
     const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*1000);
@@ -17,7 +17,7 @@ function apiLeitura(acao){
   });
 }
 
-// SALVAR com no-cors - manda e não espera resposta
+// SALVAR com no-cors
 async function api(acao, dados, cod){
   await fetch(API_URL, {
     method: 'POST',
@@ -54,7 +54,18 @@ function proximoNum(){
   return formatarNum(extrairSeq(document.getElementById('numOrc').innerText) + 1);
 }
 
+// ÚNICO fmt - formata número para 0,00
 function fmt(v){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Formata texto digitado "130" -> "130,00"
+function fmtMoeda(v){
+  v = String(v||"").replace(/\D/g,"");
+  if(!v) return "0,00";
+  return (parseInt(v,10)/100).toFixed(2).replace(".",",");
+}
+function parsePreco(v){
+  if(typeof v === 'number') return v;
+  return parseFloat(String(v||"0").replace(/\./g,"").replace(",",".")) || 0;
+}
 
 function mostrarAba(q){
   document.getElementById('aba-orc').style.display = q==='orc'?'block':'none';
@@ -69,7 +80,6 @@ function mostrarAba(q){
   document.getElementById('tabCli').className = q==='cli'?'ativo':'';
 }
 
-// ===== ÚNICO getVendedor - SEM vendedorManual =====
 function getVendedor(){
   const el = document.getElementById('vendedorSel');
   return el ? el.value || '' : '';
@@ -126,7 +136,6 @@ function usarCliente(i){
   mostrarAba('orc');
 }
 
-// Fecha a lista quando clica fora
 document.addEventListener('click', (e)=>{
   const boxC = document.getElementById('listaBuscaCliente');
   const boxP = document.getElementById('listaBuscaProduto');
@@ -225,20 +234,23 @@ function adicionarProduto(){
 }
 
 function adicionarLinhaVazia(){ adicionarLinha(1,'','',0,false); }
+
+// ORDEM CERTA: 0=REF, 1=DISCRIMINAÇÃO, 2=QUANT, 3=P.UNIT, 4=TOTAL
 function adicionarLinha(qtd, ref, desc, preco, travado){
-  const tb=document.getElementById('tbodyItens');
+  const tb=document.getElementById('tabelaItens');
   const tr=document.createElement('tr');
   const ehMaoDeObra = String(desc||'').toUpperCase().includes('MAO DE OBRA') || String(desc||'').toUpperCase().includes('MÃO DE OBRA');
   const travar = travado && !ehMaoDeObra;
   const ro = travar ? 'readonly' : '';
-  tr.innerHTML=`<td><input type="number" value="${qtd}" min="0" oninput="calcular()"></td><td><input value="${ref}" ${ro}></td><td><input class="desc-in" value="${desc}" ${ro}></td><td><input type="number" step="0.01" value="${preco}" oninput="calcular()" ${ro}></td><td class="total">0,00</td><td class="col-acao"><button class="btn-x" onclick="this.closest('tr').remove();calcular()">X</button></td></tr>`;
+  tr.innerHTML=`<td><input class="ref-in" value="${ref||''}" ${ro}></td><td><input class="desc-in" value="${desc||''}" ${ro}></td><td class="qtd"><input type="number" value="${qtd}" min="0" oninput="calcular()"></td><td class="preco"><input type="text" value="${fmt(preco)}" oninput="calcular()"></td><td class="total">0,00</td><td><button class="btn-x" onclick="this.closest('tr').remove();calcular()">X</button></td>`;
   tb.appendChild(tr); calcular();
 }
+
 function calcular(){
   let sub=0;
-  document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
-    const q=parseFloat(tr.cells[0].querySelector('input').value)||0;
-    const pr=parseFloat(tr.cells[3].querySelector('input').value)||0;
+  document.querySelectorAll('#tabelaItens tr').forEach(tr=>{
+    const q=parseFloat(tr.cells[2].querySelector('input').value)||0;
+    const pr=parsePreco(tr.cells[3].querySelector('input').value);
     const tot=q*pr; sub+=tot; tr.cells[4].innerText=fmt(tot);
   });
   const pct=parseFloat(document.getElementById('descontoPct').value)||0;
@@ -247,18 +259,21 @@ function calcular(){
   document.getElementById('valorDesconto').innerText=fmt(desc);
   document.getElementById('totalGeral').innerText=fmt(total);
 }
+// compatibilidade com código antigo que chamava calc()
+function calc(){ calcular(); }
+
 function getItens(){
   let arr=[];
-  document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
-    arr.push({qtd:tr.cells[0].querySelector('input').value, ref:tr.cells[1].querySelector('input').value, desc:tr.cells[2].querySelector('input').value, preco:tr.cells[3].querySelector('input').value, total:tr.cells[4].innerText});
+  document.querySelectorAll('#tabelaItens tr').forEach(tr=>{
+    arr.push({ref:tr.cells[0].querySelector('input').value, desc:tr.cells[1].querySelector('input').value, qtd:tr.cells[2].querySelector('input').value, preco:parsePreco(tr.cells[3].querySelector('input').value), total:tr.cells[4].innerText});
   });
   return arr;
 }
 function textoOrcamento(){
   let linhas=[];
-  document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
-    const q=tr.cells[0].querySelector('input').value||'';
-    const d=tr.cells[2].querySelector('input').value||'';
+  document.querySelectorAll('#tabelaItens tr').forEach(tr=>{
+    const q=tr.cells[2].querySelector('input').value||'';
+    const d=tr.cells[1].querySelector('input').value||'';
     const t=tr.cells[4].innerText||'0,00';
     if(d) linhas.push(`${q}x ${d} - R$ ${t}`);
   });
@@ -287,9 +302,9 @@ async function compartilhar(){
 
 async function salvarOrcamentoAtual(){
   let achouMaoSemValor = false;
-  document.querySelectorAll('#tbodyItens tr').forEach(tr=>{
-    const desc = tr.cells[2].querySelector('input').value.toUpperCase();
-    const preco = parseFloat(tr.cells[3].querySelector('input').value)||0;
+  document.querySelectorAll('#tabelaItens tr').forEach(tr=>{
+    const desc = tr.cells[1].querySelector('input').value.toUpperCase();
+    const preco = parsePreco(tr.cells[3].querySelector('input').value);
     if(desc.includes('MAO DE OBRA') || desc.includes('MÃO DE OBRA')){
       if(!preco || preco <= 0){
         achouMaoSemValor = true;
@@ -332,7 +347,7 @@ async function novoOrcamento(){
   if(!confirm('Gerar novo orçamento? Vai salvar o atual e subir o número.')) return;
   const salvou = await salvarOrcamentoAtual();
   if(!salvou) return;
-  document.getElementById('tbodyItens').innerHTML=''; document.getElementById('descontoPct').value=0;
+  document.getElementById('tabelaItens').innerHTML=''; document.getElementById('descontoPct').value=0;
   document.getElementById('cliente').value=''; document.getElementById('motor').value=''; document.getElementById('veiculo').value='';
   document.getElementById('endereco').value=''; document.getElementById('foneCliente').value=''; document.getElementById('cidade').value=''; document.getElementById('estado').value='';
   document.getElementById('buscaProdutoTop').value='';
@@ -370,7 +385,7 @@ function carregarOrcamentoHist(i){
   document.getElementById('veiculo').value = o.veiculo || '';
   document.getElementById('descontoPct').value = o.descontoPct || 0;
   document.getElementById('execucao').value = o.execucao || 'EM ESPERA';
-  document.getElementById('tbodyItens').innerHTML = '';
+  document.getElementById('tabelaItens').innerHTML = '';
   (o.itens||[]).forEach(it=>adicionarLinha(it.qtd, it.ref, it.desc, it.preco));
   calcular();
   mostrarAba('orc');
@@ -388,13 +403,55 @@ apiLeitura('dados').then(d=>{
   calcular();
 }).catch(e=>alert('Erro ao carregar dados: '+e.message));
 
-let sensivelOn = false;
-function alternarSensivel(){
-  sensivelOn = !sensivelOn;
-  document.querySelectorAll('.linha.sensivel').forEach(l=>{
-    if(sensivelOn) l.classList.add('mostrar');
-    else l.classList.remove('mostrar');
+// IMPRESSÃO - ordem certa REF / DESC / QUANT / P.UNIT / TOTAL
+const ELEMENTOS_FIXOS = ["ELEMENTOS","BICOS INJETORES","VÁLVULA DE PRESSÃO","REPAROS","CABEÇOTE HIDRÁULICO","CORPO DISTRIBUIDOR","ANEL DE RESSALTO","CAINE DE COMANDO","PISTÃO","PALHETA","MOLAS","VÁLVULA DE RETORNO","SAPATA E ROLETE","EIXO DE COMANDO","PARAFUSO OUT","ARRASTADOR","BOMBA MANUAL","KIT DISCO, PINO, MOLA","ROLAMENTOS","BUCHAS","ROLDANAS","VÁLVULA DOSIFICADORA","ANELEX CÊNTRICO","PLACA FINAL","MONTAGEM E REGULAGEM","MÃO DE OBRA"];
+
+function imprimirOrcamento(){
+  const get = id => document.getElementById(id)?.value || "";
+  document.getElementById("p-nome").textContent = get("cliente");
+  document.getElementById("p-endereco").textContent = get("endereco");
+  document.getElementById("p-fone").textContent = get("foneCliente");
+  document.getElementById("p-cidade").textContent = get("cidade");
+  document.getElementById("p-estado").textContent = get("estado");
+  document.getElementById("p-motor").textContent = get("motor");
+  document.getElementById("p-veiculo").textContent = get("veiculo");
+  document.getElementById("p-data").textContent = document.getElementById("dataOrc")?.innerText || new Date().toLocaleDateString("pt-BR");
+  document.getElementById("p-num").textContent = document.getElementById("numOrc")?.innerText || "";
+  document.getElementById("p-total").textContent = document.getElementById("totalGeral")?.textContent || "0,00";
+
+  // Mapa dos itens que já estão na tela
+  let mapa = {};
+  document.querySelectorAll("#tabelaItens tr").forEach(tr=>{
+    let tds = tr.querySelectorAll("td");
+    let ref = tds[0]?.querySelector("input")?.value || "";
+    let desc = tds[1]?.querySelector("input")?.value?.toUpperCase().trim() || "";
+    let qtd = tds[2]?.querySelector("input")?.value || "";
+    let preco = tds[3]?.querySelector("input")?.value || "0,00";
+    let total = tds[4]?.textContent || "0,00";
+    if(desc) mapa[desc] = {ref,qtd,preco,total};
   });
-  const olho = document.getElementById('olhoDiscreto');
-  if(olho) olho.style.opacity = sensivelOn ? '0.9' : '0.2';
+
+  // Monta na ordem fixa do papel, só com o que foi preenchido + linhas vazias até 26
+  let html = "";
+  ELEMENTOS_FIXOS.forEach(nome => {
+    let it = mapa[nome] || {ref:"",qtd:"",preco:"",total:""};
+    html += `<tr><td>${it.ref}</td><td>${nome}</td><td>${it.qtd}</td><td>${it.preco}</td><td>${it.total}</td></tr>`;
+  });
+  // Se tiver item fora da lista fixa, adiciona no final
+  Object.keys(mapa).forEach(desc=>{
+    if(!ELEMENTOS_FIXOS.includes(desc)){
+      let it = mapa[desc];
+      html += `<tr><td>${it.ref}</td><td>${desc}</td><td>${it.qtd}</td><td>${it.preco}</td><td>${it.total}</td></tr>`;
+    }
+  });
+  document.getElementById("p-itens").innerHTML = html;
+  window.print();
 }
+
+// Formata preço ao sair do campo: 130 -> 130,00
+document.addEventListener("blur", e=>{
+  if(e.target.closest("td.preco input")){
+    e.target.value = fmt(parsePreco(e.target.value));
+    calcular();
+  }
+}, true);
