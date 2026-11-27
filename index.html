@@ -1,3 +1,5 @@
+<!-- TA VENDO ISSO> SO FAZ OQUE VOU FALAR PRA FAZER. NAO FAÇA NADA POR CONTA PROPRIA E NEM SEM AUTORIZAÇAO -->
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -16,6 +18,12 @@
   </div>
 </header>
 
+
+<div id="barraSync" style="display:none;background:#f59e0b;color:#111;padding:10px;text-align:center;font-weight:800;font-size:13px;position:sticky;top:0;z-index:9999">
+  ⚠️ INTERNET VOLTOU - TEM <span id="qtdSync">0</span> ITEM(NS) PRA SINCRONIZAR
+  <button onclick="sincronizarAgora()" style="background:#111;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:900;margin-left:8px">SINCRONIZAR AGORA</button>
+</div>
+
 <main class="folha">
   <div class="tabs">
     <button id="tabOrc" class="ativo" onclick="mostrarAba('orc')">📄 Orçamento</button>
@@ -27,85 +35,140 @@
 
   <div id="aba-orc">
     <div class="dados">
-      <div class="linha"><div class="campo u"><input id="cliente" class="busca-top" placeholder="Nome - digite para pesquisar cliente..." oninput="filtrarClientesTop()" autocomplete="off"><div id="listaBuscaCliente" class="listview" style="display:none"></div></div></div>
-      <div class="linha"><div class="campo u"><input id="endereco" placeholder="Endereço" autocomplete="off"></div><div class="campo"><input id="foneCliente" placeholder="Fone" inputmode="tel" autocomplete="off"></div></div>
-      <div class="linha"><div class="campo"><input id="cidade" placeholder="Cidade" autocomplete="off"></div><div class="campo"><input id="estado" placeholder="Estado" autocomplete="off"></div></div>
-      <div class="linha"><div class="campo"><input id="motor" placeholder="Tipo de Motor" autocomplete="off"></div><div class="campo"><input id="veiculo" placeholder="Veículo" autocomplete="off"></div></div>
+      <div class="linha"><div class="campo u"><input id="cliente" class="busca-top" placeholder="Nome - digite para pesquisar cliente..." oninput="filtrarClientesTop()" autocomplete="new-password"><div id="listaBuscaCliente" class="listview" style="display:none"></div></div></div>
+      <div class="linha"><div class="campo u"><input id="endereco" placeholder="Endereço" autocomplete="new-password"></div><div class="campo"><input id="foneCliente" placeholder="Fone" inputmode="tel" autocomplete="new-password"></div></div>
+      <div class="linha"><div class="campo"><input id="cidade" placeholder="Cidade" autocomplete="new-password"></div><div class="campo"><input id="estado" placeholder="Estado" autocomplete="new-password"></div></div>
+      <div class="linha"><div class="campo"><input id="motor" placeholder="Tipo de Motor" autocomplete="new-password"></div><div class="campo"><input id="veiculo" placeholder="Veículo" autocomplete="new-password"></div></div>
       <div class="linha"><div class="campo"><select id="vendedorSel"><option value="">-- escolher funcionário --</option></select></div><div class="campo"><select id="execucao"><option value="EM ESPERA">EM ESPERA</option><option value="EXECUTAR SERVICO">EXECUTAR SERVIÇO</option><option value="NAO VAI FAZER">NÃO VAI FAZER</option></select></div></div>
     </div>
-
-    <div class="orcamento-baixo">
-      <div class="orcamento"><b>Orçamento</b><div class="num">Nº <span id="numOrc">ZD-2026.0001</span></div><div class="data">Data: <span id="dataOrc"></span></div></div>
-    </div>
-
+    <div class="orcamento-baixo"><div class="orcamento"><b>Orçamento</b><div class="num">Nº <span id="numOrc">ZD-2026.0001</span></div><div class="data">Data: <span id="dataOrc"></span></div></div></div>
     <div class="add-row">
-      <input id="buscaProdutoTop" class="busca-top" placeholder="🔍 Buscar produto por Código ou Nome..." oninput="filtrarProdutosTop()" autocomplete="off">
-      <input id="qtdAdd" type="number" value="1" min="1" inputmode="numeric">
+      <div style="display:flex;gap:6px;flex:1;min-width:0">
+        <input id="buscaProdutoTop" class="busca-top" placeholder="🔍 Buscar produto por Código ou Nome..." oninput="filtrarProdutosTop()" autocomplete="new-password" style="flex:1;min-width:0;box-sizing:border-box;border:2px solid #9ca3af;border-radius:10px">
+        <button onclick="atualizarDados()" title="Atualizar produtos" style="background:#111;color:#fff;border:none;border-radius:8px;padding:0 12px;font-size:16px;flex-shrink:0">🔄</button>
+      </div>
+      <input id="qtdAdd" type="number" value="1" min="1" inputmode="numeric" autocomplete="new-password" style="flex-shrink:0">
+      <div id="listaBuscaProduto" class="listview" style="display:none"></div>
     </div>
-    <div id="listaBuscaProduto" class="listview" style="display:none"></div>
     <div class="btn-row">
       <button class="btn-add" onclick="adicionarProduto()">+ Adicionar Produto</button>
-      <button class="btn-add dark" onclick="adicionarLinhaVazia()">+ Adicionar linha manual / Mão de obra</button>
+      <button class="btn-add dark" onclick="adicionarLinhaVazia()">+ Linha Manual</button>
     </div>
-
-    <div class="tabela-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>REF.</th>
-          <th>DISCRIMINAÇÃO</th>
-          <th>QUANT.</th>
-          <th>P. UNIT.</th>
-          <th>TOTAL</th>
-          <th></th>
-        </tr>
-      </thead>
+    <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgItensOrc">0 itens</b></span><span id="selecionadoOrc">NENHUM ITEM SELECIONADO</span></div>
+    <div class="tabela-wrap-sistema">
+    <table class="tabela-sistema">
+      <thead><tr><th>ITEM</th><th>REF.</th><th>DISCRIMINAÇÃO</th><th>QUANT.</th><th>P. UNIT.</th><th>TOTAL</th></tr></thead>
       <tbody id="tabelaItens"></tbody>
     </table>
     </div>
-   
-    <div class="totais">Subtotal: R$ <span id="subtotal">0,00</span><br>Desconto: <input id="descontoPct" type="number" value="0" min="0" max="100" oninput="calcular()" inputmode="numeric"> % &nbsp; = R$ <span id="valorDesconto">0,00</span></div>
+    <div class="botoes-lado">
+      <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirItemOrcSelecionado()">🗑️ Excluir Item Selecionado</button>
+    </div>
+    <div class="totais">Subtotal: R$ <span id="subtotal">0,00</span><br>Desconto: <input id="descontoPct" type="number" value="0" min="0" max="100" oninput="calcular()" inputmode="numeric" autocomplete="new-password"> % &nbsp; = R$ <span id="valorDesconto">0,00</span></div>
     <div class="total-geral">TOTAL R$ <span id="totalGeral">0,00</span></div>
   </div>
 
-  <div id="aba-prod" style="display:none;">
-    <div class="box-cad"><h3>Cadastrar novo produto</h3>
-      <div class="grid"><input id="pNome" placeholder="Nome do item *"><input id="pCodigo" placeholder="Código / Nº de Série"><input id="pLote" placeholder="Lote"><input id="pValor" type="number" step="0.01" placeholder="Valor unitário *" inputmode="decimal"></div>
-      <button class="btn-add" onclick="salvarProduto()">Salvar Produto</button>
+
+<div style="display:grid;gap:8px">
+
+
+<div class="grid" style="grid-template-columns:90px 150px 1fr">
+  <input id="pCodigo" placeholder="COD." readonly autocomplete="new-password" style="background:#e5e7eb;text-align:center;font-weight:900">
+  <input id="pReferencia" placeholder="REFEREN..." maxlength="15" inputmode="numeric" autocomplete="new-password" oninput="this.value=this.value.replace(/\D/g,'').slice(0,15);buscarPorReferencia(this.value)">
+  <input id="pNome" placeholder="NOME DO ITEM *" autocomplete="new-password">
+</div>
+
+   <div class="grid" style="grid-template-columns:1fr 1fr 130px 1fr">
+    <input id="pValor" type="number" step="0.01" placeholder="VALOR..." inputmode="decimal" autocomplete="new-password" oninput="verificarValor()">
+    <input id="pLote" placeholder="LOTE" autocomplete="new-password">
+    <input id="pValidade" type="date" autocomplete="new-password">
+    <input id="pClassificacao" placeholder="CLASSIFICAÇ..." autocomplete="new-password">
+  </div>
+
+  <div id="avisoValor" style="display:none;color:#991b1b;background:#fee2e2;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:800">⚠️ VALOR NÃO ESTÁ IGUAL AO CADASTRADO!</div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    <input id="pEntrada" type="number" min="0" placeholder="ENTRADA" inputmode="numeric" autocomplete="new-password">
+    <input id="pSaida" type="number" min="0" placeholder="SAÍDA" inputmode="numeric" autocomplete="new-password">
+    <input id="pSaldo" type="number" min="0" placeholder="SALDO" inputmode="numeric" autocomplete="new-password">
+  </div>
+
+</div>
+
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarProduto" onclick="salvarProduto()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparProduto()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirProdutoAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarProdutoAtual()">➡️ Usar</button>
+      </div>
     </div>
-    <div class="box-cad"><h3>Produtos cadastrados</h3><div class="lista" id="listaProdutos"></div></div>
+    <div class="box-cad"><h3>Produtos cadastrados</h3>
+      <div class="barra-sistema"><button onclick="filtrarProdutosLista()">🔍 Pesquisar</button><button onclick="document.getElementById('buscaProdutoLista').value='';filtrarProdutosLista()">🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgProdutos">0 produtos</b></span></div>
+      <div id="selecionadoProduto" class="selecionado-sistema" style="display:none"></div>
+      <input id="buscaProdutoLista" placeholder="🔍 Buscar produto por nome, código ou lote..." oninput="filtrarProdutosLista()" style="width:100%;padding:8px;border:1px solid #999;margin:6px 0;text-transform:uppercase;font-size:11px;" autocomplete="new-password">
+      <div class="tabela-wrap-sistema">
+      <table class="tabela-sistema"><thead><tr><th>ITEM</th><th>CÓD.</th><th>NOME</th><th>REF.</th><th>LOTE</th><th>VALIDADE</th><th>SALDO</th><th>VALOR</th></tr></thead><tbody id="listaProdutos"></tbody></table>
+      </div>
+    </div>
   </div>
 
   <div id="aba-vend" style="display:none;">
     <div class="box-cad"><h3>Cadastrar funcionário</h3>
-      <div class="grid"><input id="vNome" placeholder="Nome completo *"><input id="vFone" placeholder="Fone / WhatsApp" inputmode="tel"></div>
-      <button class="btn-add" onclick="salvarFuncionario()">Salvar Funcionário</button>
+      <div class="grid"><input id="vNome" placeholder="Nome completo *" autocomplete="new-password"><input id="vFone" placeholder="Fone / WhatsApp" inputmode="tel" autocomplete="new-password"></div>
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarFuncionario" onclick="salvarFuncionario()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparFuncionario()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirFuncionarioAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarFuncionarioAtual()">➡️ Usar</button>
+      </div>
     </div>
-    <div class="box-cad"><h3>Funcionários cadastrados</h3><div class="lista" id="listaVendedores"></div></div>
+    <div class="box-cad"><h3>Funcionários cadastrados</h3>
+      <div class="barra-sistema"><button>🔍 Pesquisar</button><button>🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgVendedores">0 funcionários</b></span></div>
+      <div id="selecionadoFunc" class="selecionado-sistema" style="display:none"></div>
+      <div class="tabela-wrap-sistema"><table class="tabela-sistema"><thead><tr><th>ITEM</th><th>NOME</th><th>MAT.</th><th>FONE / WHATSAPP</th></tr></thead><tbody id="listaVendedores"></tbody></table></div>
+    </div>
   </div>
 
   <div id="aba-hist" style="display:none;">
-    <div class="box-cad">
-      <h3>Histórico de Orçamentos</h3>
-      <input id="buscaHist" placeholder="🔍 Buscar por nome, número ou motor..." oninput="filtrarHistorico()" style="width:100%;padding:11px;border:1px solid #ccc;border-radius:10px;">
-      <button class="btn-add" onclick="carregarHistorico()">🔄 Atualizar lista</button>
+    <div class="box-cad"><h3>Histórico de Orçamentos</h3>
+      <input id="buscaHist" placeholder="🔍 Buscar por nome, número ou motor..." oninput="filtrarHistorico()" style="width:100%;padding:8px;border:1px solid #999;text-transform:uppercase;font-size:11px;" autocomplete="new-password">
+      <div class="botoes-lado">
+        <button class="btn-add" onclick="carregarHistorico()">🔄 Atualizar</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="abrirOrcamentoSelecionado()">➡️ Abrir Selecionado</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirOrcamentoSelecionado()">🗑️ Excluir</button>
+      </div>
     </div>
-    <div id="listaHistorico"></div>
+    <div class="barra-sistema"><button>🔍 Pesquisar</button><button>🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+    <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgHistorico">0 orçamentos</b></span></div>
+    <div id="selecionadoHist" class="selecionado-sistema" style="display:none"></div>
+    <div class="tabela-wrap-sistema"><table class="tabela-sistema"><thead><tr><th>ITEM</th><th>Nº</th><th>DATA</th><th>CLIENTE</th><th>MOTOR</th><th>EXECUÇÃO</th><th>TOTAL</th></tr></thead><tbody id="listaHistorico"></tbody></table></div>
   </div>
 
   <div id="aba-cli" style="display:none;">
     <div class="box-cad"><h3>Cadastrar cliente</h3>
       <div class="grid">
-        <input id="cNome" placeholder="Nome / Razão Social *">
-        <input id="cDoc" placeholder="CPF ou CNPJ *" maxlength="18" oninput="mascaraDoc(this)" inputmode="numeric">
-        <input id="cFone" placeholder="Fone / WhatsApp" inputmode="tel">
-        <input id="cEndereco" placeholder="Endereço">
-        <input id="cCidade" placeholder="Cidade">
-        <input id="cEstado" placeholder="Estado">
+        <input id="cNome" placeholder="Nome / Razão Social *" autocomplete="new-password">
+        <input id="cDoc" placeholder="CPF ou CNPJ *" maxlength="18" oninput="mascaraDoc(this)" inputmode="numeric" autocomplete="new-password">
+        <input id="cFone" placeholder="Fone / WhatsApp" inputmode="tel" autocomplete="new-password">
+        <input id="cEndereco" placeholder="Endereço" autocomplete="new-password">
+        <input id="cCidade" placeholder="Cidade" autocomplete="new-password">
+        <input id="cEstado" placeholder="Estado" autocomplete="new-password">
       </div>
-      <button class="btn-add" onclick="salvarCliente()">Salvar Cliente</button>
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarCliente" onclick="salvarCliente()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparCliente()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirClienteAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarClienteAtual()">➡️ Usar</button>
+      </div>
     </div>
-    <div class="box-cad"><h3>Clientes cadastrados</h3><div class="lista" id="listaClientes"></div></div>
+    <div class="box-cad"><h3>Clientes cadastrados</h3>
+      <div class="barra-sistema"><button>🔍 Pesquisar</button><button>🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgClientes">0 clientes</b></span></div>
+      <div id="selecionadoCliente" class="selecionado-sistema" style="display:none"></div>
+      <div class="tabela-wrap-sistema"><table class="tabela-sistema"><thead><tr><th>ITEM</th><th>NOME</th><th>COD. / CPF-CNPJ</th><th>FONE / WHATSAPP</th><th>CIDADE / UF</th></tr></thead><tbody id="listaClientes"></tbody></table></div>
+    </div>
   </div>
 </main>
 
@@ -114,10 +177,11 @@
   <button class="btn-wa" onclick="enviarWhatsApp()">💬 WhatsApp</button>
   <button class="btn-share" onclick="compartilhar()">↗️ Compartilhar</button>
   <button class="btn-save" onclick="salvarOrcamentoAtual()">💾 Salvar</button>
+  <button class="btn-save" style="background:#f59e0b;" onclick="limparOrcamento()">🧹 Limpar</button>
+  <button class="btn-save" style="background:#ef4444;" onclick="excluirOrcamentoAtual()">🗑️ Excluir</button>
   <button class="btn-novo" onclick="novoOrcamento()">➕ Novo</button>
 </nav>
 
-<!-- IMPRESSÃO - IGUAL O PAPEL -->
 <div id="print-orcamento" style="display:none;">
   <div class="papel">
     <div class="papel-topo">
@@ -129,11 +193,7 @@
         <p>E-mail: genilson.zao@hotmail.com</p>
         <p>Av. Cícero Ávila, 1495 - Olga Moreira - Promissão - Paragominas - PA</p>
       </div>
-      <div class="papel-num">
-        <b>ORÇAMENTO</b>
-        <p>Nº <span id="p-num">0725</span></p>
-        <p>Data: <span id="p-data"></span></p>
-      </div>
+      <div class="papel-num"><b>ORÇAMENTO</b><p>Nº <span id="p-num">0725</span></p><p>Data: <span id="p-data"></span></p></div>
     </div>
     <div class="papel-dados">
       <p>Nome: <span id="p-nome"></span></p>
@@ -141,13 +201,22 @@
       <p>Cidade: <span id="p-cidade"></span> <i>Estado:</i> <span id="p-estado"></span></p>
       <p>Tipo de Motor: <span id="p-motor"></span> <i>Veículo:</i> <span id="p-veiculo"></span></p>
     </div>
-    <table class="papel-tabela">
-      <thead>
-        <tr><th>REF.</th><th>DISCRIMINAÇÃO</th><th>QUANT.</th><th>P. UNIT.</th><th>TOTAL</th></tr>
-      </thead>
-      <tbody id="p-itens"></tbody>
-    </table>
+    <table class="papel-tabela"><thead><tr><th>REF.</th><th>DISCRIMINAÇÃO</th><th>QUANT.</th><th>P. UNIT.</th><th>TOTAL</th></tr></thead><tbody id="p-itens"></tbody></table>
     <div class="papel-total">TOTAL R$ <span id="p-total"></span></div>
+  </div>
+</div>
+
+<!-- MODAL QUANTIDADE -->
+<div id="modalQtd" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;justify-content:center;align-items:center">
+  <div style="background:#fff;width:90%;max-width:320px;border-radius:12px;padding:16px;text-align:center">
+    <b id="modalQtdNome" style="font-size:15px;display:block">PRODUTO</b>
+    <span id="modalQtdValor" style="font-size:12px;color:#666"></span>
+    <label style="display:block;margin:14px 0 6px;font-size:11px;font-weight:800">QUANTIDADE</label>
+    <input id="inputQtdModal" type="number" value="1" min="1" inputmode="numeric" style="width:100%;padding:14px;font-size:22px;font-weight:900;text-align:center;border:2px solid #111;border-radius:10px">
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="confirmarQtdModal()" style="flex:1;background:#22b45a;color:#fff;border:none;padding:13px;border-radius:10px;font-weight:900">ENTER - ADICIONAR</button>
+      <button onclick="fecharModalQtd()" style="background:#fee2e2;color:#991b1b;border:none;padding:13px 16px;border-radius:10px;font-weight:900">X</button>
+    </div>
   </div>
 </div>
 
