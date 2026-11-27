@@ -1,0 +1,16 @@
+let historico = [];
+let histSelecionadoIdx = null;
+
+async function carregarHistorico(){ try{ const d = await apiLeitura('historico'); historico = Array.isArray(d) ? d : (d.historico || d.dados || []); renderHistorico(historico); }catch(e){ await mostrarMsgSistema('Erro: '+e.message); } }
+function renderHistorico(lista){
+  const msg=document.getElementById('msgHistorico'); if(msg) msg.innerText=(lista?lista.length:0)+' orçamentos';
+  if(!lista || !lista.length){ document.getElementById('listaHistorico').innerHTML = '<tr><td colspan="7" class="tabela-vazio">NENHUM ORÇAMENTO</td></tr>'; return; }
+  document.getElementById('listaHistorico').innerHTML = lista.map((o,i)=>{
+    const verde = (o.execucao||'').includes('EXECUTAR') ? 'linha-verde' : '';
+    return `<tr class="${verde}" onclick="selecionarLinha(this, 'ORÇAMENTO SELECIONADO: ${o.numero} | ${o.cliente} | TOTAL R$ ${o.total}', 'selecionadoHist');histSelecionadoIdx=${i}"><td>${String(i+1).padStart(3,'0')}</td><td><b>${o.numero}</b></td><td>${o.data}</td><td>${o.cliente}</td><td>${o.motor||''}</td><td>${o.execucao||''}</td><td><b>R$ ${o.total}</b></td></tr>`;
+  }).join('');
+}
+function filtrarHistorico(){ const busca = document.getElementById('buscaHist').value.toLowerCase(); const filtrado = historico.filter(o => (o.cliente||'').toLowerCase().includes(busca) || (o.numero||'').toString().includes(busca) || (o.motor||'').toLowerCase().includes(busca)); renderHistorico(filtrado); }
+async function abrirOrcamentoSelecionado(){ if(histSelecionadoIdx==null){ await mostrarMsgSistema('Clica numa linha do histórico primeiro'); return; } carregarOrcamentoHist(histSelecionadoIdx); }
+async function excluirOrcamentoSelecionado(){ if(histSelecionadoIdx==null){ await mostrarMsgSistema('Clica numa linha do histórico primeiro'); return; } const o = historico[histSelecionadoIdx]; if(!await perguntarSistema('Excluir o orçamento '+o.numero+'?')) return; try{ await api('excluirOrcamento', null, o.numero); historico.splice(histSelecionadoIdx,1); histSelecionadoIdx=null; renderHistorico(historico); }catch(e){ await mostrarMsgSistema('Erro: '+e.message); } }
+function carregarOrcamentoHist(i){ const o = historico[i]; if(!o) return; document.getElementById('numOrc').innerText = o.numero; document.getElementById('dataOrc').innerText = o.data; document.getElementById('cliente').value = o.cliente || ''; document.getElementById('foneCliente').value = o.foneCliente || ''; document.getElementById('endereco').value = o.endereco || ''; document.getElementById('cidade').value = o.cidade || ''; document.getElementById('estado').value = o.estado || ''; document.getElementById('motor').value = o.motor || ''; document.getElementById('veiculo').value = o.veiculo || ''; document.getElementById('descontoPct').value = o.descontoPct || 0; document.getElementById('execucao').value = o.execucao || 'EM ESPERA'; document.getElementById('tabelaItens').innerHTML = ''; (o.itens||[]).forEach(it=>adicionarLinha(it.qtd, it.ref, it.desc, it.preco)); calcular(); mostrarAba('orc'); }

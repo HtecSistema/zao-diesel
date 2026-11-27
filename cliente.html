@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZDiesil</title>
+<link rel="stylesheet" href="cliente.css">
+</head>
+<body>
+
+<div id="barraSync" style="display:none;background:#f59e0b;color:#111;padding:10px;text-align:center;font-weight:800;font-size:13px;position:sticky;top:0;z-index:9999">
+  ⚠️ INTERNET VOLTOU - TEM <span id="qtdSync">0</span> ITEM(NS) PRA SINCRONIZAR
+  <button onclick="sincronizarAgora()" style="background:#111;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:900;margin-left:8px">SINCRONIZAR AGORA</button>
+</div>
+
+<main class="folha">
+  <div class="tabs">
+    <button id="tabCli" class="ativo">👤 Clientes</button>
+  </div>
+
+  <div id="aba-cli">
+    <div class="box-cad"><h3>Cadastrar cliente</h3>
+      <div class="grid">
+        <input id="cNome" placeholder="Nome / Razão Social *" autocomplete="new-password">
+        <input id="cDoc" placeholder="CPF ou CNPJ *" maxlength="18" oninput="mascaraDoc(this)" inputmode="numeric" autocomplete="new-password">
+        <input id="cFone" placeholder="Fone / WhatsApp" inputmode="tel" autocomplete="new-password">
+        <input id="cEndereco" placeholder="Endereço" autocomplete="new-password">
+        <input id="cCidade" placeholder="Cidade" autocomplete="new-password">
+        <input id="cEstado" placeholder="Estado" autocomplete="new-password">
+      </div>
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarCliente" onclick="salvarCliente()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparCliente()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirClienteAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarClienteAtual()">➡️ Usar</button>
+      </div>
+    </div>
+    <div class="box-cad"><h3>Clientes cadastrados</h3>
+      <div class="barra-sistema"><button>🔍 Pesquisar</button><button>🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgClientes">0 clientes</b></span></div>
+      <div id="selecionadoCliente" class="selecionado-sistema" style="display:none"></div>
+      <div class="tabela-wrap-sistema"><table class="tabela-sistema"><thead><tr><th>ITEM</th><th>NOME</th><th>COD. / CPF-CNPJ</th><th>FONE / WHATSAPP</th><th>CIDADE / UF</th></tr></thead><tbody id="listaClientes"></tbody></table></div>
+    </div>
+  </div>
+</main>
+
+<script src="cliente.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZDiesil</title>
+<link rel="stylesheet" href="funcionario.css">
+</head>
+<body>
+
+<div id="barraSync" style="display:none;background:#f59e0b;color:#111;padding:10px;text-align:center;font-weight:800;font-size:13px;position:sticky;top:0;z-index:9999">
+  ⚠️ INTERNET VOLTOU - TEM <span id="qtdSync">0</span> ITEM(NS) PRA SINCRONIZAR
+  <button onclick="sincronizarAgora()" style="background:#111;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:900;margin-left:8px">SINCRONIZAR AGORA</button>
+</div>
+
+<main class="folha">
+  <div class="tabs">
+    <button id="tabVend" class="ativo">👤 Funcionários</button>
+  </div>
+
+  <div id="aba-vend">
+    <div class="box-cad"><h3>Cadastrar funcionário</h3>
+      <div class="grid"><input id="vNome" placeholder="Nome completo *" autocomplete="new-password"><input id="vFone" placeholder="Fone / WhatsApp" inputmode="tel" autocomplete="new-password"></div>
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarFuncionario" onclick="salvarFuncionario()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparFuncionario()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirFuncionarioAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarFuncionarioAtual()">➡️ Usar</button>
+      </div>
+    </div>
+    <div class="box-cad"><h3>Funcionários cadastrados</h3>
+      <div class="barra-sistema"><button>🔍 Pesquisar</button><button>🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgVendedores">0 funcionários</b></span></div>
+      <div id="selecionadoFunc" class="selecionado-sistema" style="display:none"></div>
+      <div class="tabela-wrap-sistema"><table class="tabela-sistema"><thead><tr><th>ITEM</th><th>NOME</th><th>MAT.</th><th>FONE / WHATSAPP</th></tr></thead><tbody id="listaVendedores"></tbody></table></div>
+    </div>
+  </div>
+</main>
+
+<script src="funcionario.js"></script>
+</body>
+</html>

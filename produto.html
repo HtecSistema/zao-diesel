@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZDiesil</title>
+<link rel="stylesheet" href="produto.css">
+</head>
+<body>
+
+<div id="barraSync" style="display:none;background:#f59e0b;color:#111;padding:10px;text-align:center;font-weight:800;font-size:13px;position:sticky;top:0;z-index:9999">
+  ⚠️ INTERNET VOLTOU - TEM <span id="qtdSync">0</span> ITEM(NS) PRA SINCRONIZAR
+  <button onclick="sincronizarAgora()" style="background:#111;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:900;margin-left:8px">SINCRONIZAR AGORA</button>
+</div>
+
+<main class="folha">
+  <div class="tabs">
+    <button id="tabProd" class="ativo">📦 Produtos</button>
+  </div>
+
+  <div id="aba-prod">
+<div style="display:grid;gap:8px">
+
+<div class="grid" style="grid-template-columns:90px 150px 1fr">
+  <input id="pCodigo" placeholder="COD." readonly autocomplete="new-password" style="background:#e5e7eb;text-align:center;font-weight:900">
+  <input id="pReferencia" placeholder="REFEREN..." maxlength="15" inputmode="numeric" autocomplete="new-password" oninput="this.value=this.value.replace(/\D/g,'').slice(0,15);buscarPorReferencia(this.value)">
+  <div style="position:relative;min-width:0">
+    <input id="pNome" placeholder="NOME DO ITEM *" autocomplete="new-password" oninput="filtrarProdutosPorNome()" style="width:100%">
+    <div id="listaBuscaProdutoNome" class="listview" style="display:none"></div>
+  </div>
+</div>
+
+   <div class="grid" style="grid-template-columns:1fr 1fr 130px 1fr">
+    <input id="pValor" type="number" step="0.01" placeholder="VALOR..." inputmode="decimal" autocomplete="new-password" oninput="verificarValor()">
+    <input id="pLote" placeholder="LOTE" autocomplete="new-password">
+    <input id="pValidade" type="date" autocomplete="new-password">
+    <input id="pClassificacao" placeholder="CLASSIFICAÇ..." autocomplete="new-password">
+  </div>
+
+  <div id="avisoValor" style="display:none;color:#991b1b;background:#fee2e2;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:800">⚠️ VALOR NÃO ESTÁ IGUAL AO CADASTRADO!</div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    <input id="pEntrada" type="number" min="0" placeholder="ENTRADA" inputmode="numeric" autocomplete="new-password">
+    <input id="pSaida" type="number" min="0" placeholder="SAÍDA" inputmode="numeric" autocomplete="new-password">
+    <input id="pSaldo" type="number" min="0" placeholder="SALDO" inputmode="numeric" autocomplete="new-password">
+  </div>
+
+</div>
+
+      <div class="botoes-lado">
+        <button class="btn-add" id="btnSalvarProduto" onclick="salvarProduto()">💾 Salvar</button>
+        <button class="btn-add dark" onclick="limparProduto()">🧹 Limpar</button>
+        <button class="btn-add" style="background:#fee2e2;color:#991b1b;" onclick="excluirProdutoAtual()">🗑️ Excluir</button>
+        <button class="btn-add" style="background:#22b45a;" onclick="usarProdutoAtual()">➡️ Usar</button>
+      </div>
+    <div class="box-cad"><h3>Produtos cadastrados</h3>
+      <div class="barra-sistema"><button onclick="filtrarProdutosLista()">🔍 Pesquisar</button><button onclick="document.getElementById('buscaProdutoLista').value='';filtrarProdutosLista()">🧹 Limpar</button><button>📄 Relatório</button><button>📗 Excel</button></div>
+      <div class="msg-sistema"><span>Dados 100% Localizados - <b id="msgProdutos">0 produtos</b></span></div>
+      <div id="selecionadoProduto" class="selecionado-sistema" style="display:none"></div>
+      <input id="buscaProdutoLista" placeholder="🔍 Buscar produto por nome, código ou lote..." oninput="filtrarProdutosLista()" style="width:100%;padding:8px;border:1px solid #999;margin:6px 0;text-transform:uppercase;font-size:11px;" autocomplete="new-password">
+      <div class="tabela-wrap-sistema">
+      <table class="tabela-sistema"><thead><tr><th>ITEM</th><th>CÓD.</th><th>NOME</th><th>REF.</th><th>LOTE</th><th>VALIDADE</th><th>SALDO</th><th>VALOR</th></tr></thead><tbody id="listaProdutos"></tbody></table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="produto.js"></script>
+</body>
+</html>
