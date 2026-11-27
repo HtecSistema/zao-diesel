@@ -13,16 +13,11 @@
   <button onclick="sincronizarAgora()" style="background:#111;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:900;margin-left:8px">SINCRONIZAR AGORA</button>
 </div>
 
-<main class="folha">
-  <div class="tabs">
-    <button id="tabProd" class="ativo">📦 Produtos</button>
-  </div>
 
   <div id="aba-prod">
 <div style="display:grid;gap:8px">
 
-<div class="grid" style="grid-template-columns:90px 150px 1fr">
-  <input id="pCodigo" placeholder="COD." readonly autocomplete="new-password" style="background:#e5e7eb;text-align:center;font-weight:900">
+<div class="grid" style="grid-template-columns:150px 1fr">
   <input id="pReferencia" placeholder="REFEREN..." maxlength="15" inputmode="numeric" autocomplete="new-password" oninput="this.value=this.value.replace(/\D/g,'').slice(0,15);buscarPorReferencia(this.value)">
   <div style="position:relative;min-width:0">
     <input id="pNome" placeholder="NOME DO ITEM *" autocomplete="new-password" oninput="filtrarProdutosPorNome()" style="width:100%">
@@ -59,8 +54,9 @@
       <div id="selecionadoProduto" class="selecionado-sistema" style="display:none"></div>
       <input id="buscaProdutoLista" placeholder="🔍 Buscar produto por nome, código ou lote..." oninput="filtrarProdutosLista()" style="width:100%;padding:8px;border:1px solid #999;margin:6px 0;text-transform:uppercase;font-size:11px;" autocomplete="new-password">
       <div class="tabela-wrap-sistema">
-      <table class="tabela-sistema"><thead><tr><th>ITEM</th><th>CÓD.</th><th>NOME</th><th>REF.</th><th>LOTE</th><th>VALIDADE</th><th>SALDO</th><th>VALOR</th></tr></thead><tbody id="listaProdutos"></tbody></table>
-      </div>
+<table class="tabela-sistema"><thead><tr><th>REFERENCIA</th><th>NOME</th><th>LOTE</th><th>VALIDADE</th><th>VALOR</th><th>ENTRADA</th><th>SAIDA</th><th>SALDO</th><th>CLASSIFICAÇÃO</th></tr></thead><tbody id="listaProdutos"></tbody></table>
+
+           </div>
     </div>
   </div>
 </main>
