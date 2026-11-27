@@ -1,13 +1,13 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial, Helvetica, sans-serif;}
 html{width:100%;overflow-x:hidden;}
-body{background:#fff;padding:0;display:flex;flex-direction:column;align-items:stretch;width:100%;min-width:0;overflow-x:hidden;}
-.app-header{background:#1a4a8a;color:#fff;width:100%;max-width:none;padding:10px 12px;display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
+body{background:#fff;padding:0;display:flex;flex-direction:column;align-items:flex-start;width:100%;min-width:0;overflow-x:hidden;}
+.app-header{background:#1a4a8a;color:#fff;width:100%;max-width:620px;padding:10px 12px;display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
 .app-header .logo-app{font-size:20px;font-weight:900;line-height:1;white-space:nowrap;}
 .app-header .logo-app span{background:#fff;color:#1a4a8a;padding:2px 8px;border-radius:4px;}
 .app-header .logo-app span:last-child{background:#f2b705;color:#1a4a8a;}
 .app-header small{font-size:10px;letter-spacing:1px;opacity:.9;display:block;margin-top:2px;}
 .foto-topo{width:52px;height:52px;object-fit:cover;border-radius:0;flex-shrink:0;background:transparent;}
-.folha{background:#f3f4f6;width:100%;max-width:none;padding:14px 12px;border-radius:0;box-shadow:none;overflow:visible;}
+.folha{background:#f3f4f6;width:100%;max-width:620px;padding:14px 12px;border-radius:0;box-shadow:none;overflow:visible;}
 .tabs{display:flex;gap:6px;margin-bottom:12px;position:sticky;top:0;background:#f3f4f6;padding:8px 0;z-index:40;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .tabs::-webkit-scrollbar{display:none;}
 .tabs button{flex:0 0 auto;padding:10px 14px;border:none;border-radius:999px;font-weight:800;cursor:pointer;background:#d1d5db;font-size:13px;white-space:nowrap;color:#111;}
@@ -58,4 +58,14 @@ table.tabela-sistema tbody tr.selecionado td{color:#000;font-weight:700 !importa
 @media(min-width:601px) and (max-width:820px){
   .folha{padding:16px 14px;}
   .tabs button{font-size:13px;}
+}
+@media(min-width:821px){
+  .folha{max-width:620px;margin:0;}
+  .app-header{max-width:620px;}
+}
+
+/* Afasta os campos da barra azul */
+#aba-prod{
+  padding-top: 18px !important;
+  margin-top: 6px !important;
 }
