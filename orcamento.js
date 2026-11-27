@@ -313,3 +313,8 @@ document.addEventListener('DOMContentLoaded', atualizarBarraSync);
 // --- INICIO ---
 el('dataOrc').innerText = new Date().toLocaleDateString('pt-BR');
 apiLeitura('dados').then(d=>{ produtos = d.produtos || []; vendedores = d.funcionarios || []; clientes = d.clientes || []; ultimoNum = extrairSeq(d.ultimoNum); el('numOrc').innerText = formatarNum(ultimoNum + 1); prepararIndice(); renderVendedores(); calcular(); }).catch(e=>mostrarMsgSistema('Erro ao carregar dados: '+e.message));
+
+function alternarEndereco(){
+  const mostrar = document.getElementById('chkOcultarEnd').checked;
+  document.getElementById('blocoEndereco').style.display = mostrar ? 'block' : 'none';
+}
