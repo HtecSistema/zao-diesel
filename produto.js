@@ -1,4 +1,5 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbyrQupOirl8tGA1oT6yirFvACSw-UBtAgILdgE4AZMtd4yju1rC0NJNdKRVJ1LA9bg6/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz-_4-7ZaNyVI0xGBks51S5hn1LkgN8zMRcAqpL7uHJbL-WBJeE95EJIbKpSzboBA/exec';
+
 function apiLeitura(acao){
   return new Promise((resolve, reject)=>{
     const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*1000);
@@ -11,7 +12,6 @@ function apiLeitura(acao){
 }
 async function api(acao, dados, cod){
   await fetch(API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({acao, dados, cod}) });
-  if(acao==='salvarProduto'){ const max = produtos.length ? Math.max(...produtos.map(p=>parseInt(p.cod)||0)) : 0; return {cod: max+1}; }
   if(acao==='salvarFuncionario'){ const max = vendedores.length ? Math.max(...vendedores.map(v=>parseInt(v.mat)||0)) : 0; return {mat: max+1}; }
   return {ok:true};
 }
@@ -56,10 +56,13 @@ function perguntarSistema(texto){
 let produtos = []; let vendedores = []; let clientes = []; let historico = []; let ultimoNum = 0; let produtoSelecionadoTop = null;
 let idxSetaLista = -1;
 let idxSetaCliente = -1;
-let editProdutoCod = null; let editClienteCod = null; let editFuncMat = null;
+let editProdutoRef = null; let editClienteCod = null; let editFuncMat = null;
 let histSelecionadoIdx = null; let itemOrcSelecionado = null;
 function fmt(v){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function parsePreco(v){ if(typeof v === 'number') return v; return parseFloat(String(v||"0").replace(/\./g,"").replace(",",".")) || 0; }
+function el(id){ return document.getElementById(id); }
+function setVal(id, v){ const e = el(id); if(e) e.value = v ?? ''; }
+function getVal(id){ const e = el(id); return e ? e.value : ''; }
 function selecionarLinha(tr, textoSelecionado, idFaixa){
   if(!tr) return;
   const tb = tr.closest('tbody');
@@ -68,35 +71,103 @@ function selecionarLinha(tr, textoSelecionado, idFaixa){
   if(idFaixa && textoSelecionado){ const f = document.getElementById(idFaixa); if(f){ f.style.display='block'; f.innerText = textoSelecionado; } }
 }
 function mostrarAba(q){
-  document.getElementById('aba-orc').style.display = q==='orc'?'block':'none';
-  document.getElementById('aba-prod').style.display = q==='prod'?'block':'none';
-  document.getElementById('aba-vend').style.display = q==='vend'?'block':'none';
-  document.getElementById('aba-hist').style.display = q==='hist'?'block':'none';
-  document.getElementById('aba-cli').style.display = q==='cli'?'block':'none';
-  document.getElementById('tabOrc').className = q==='orc'?'ativo':'';
-  document.getElementById('tabProd').className = q==='prod'?'ativo':'';
-  document.getElementById('tabVend').className = q==='vend'?'ativo':'';
-  document.getElementById('tabHist').className = q==='hist'?'ativo':'';
-  document.getElementById('tabCli').className = q==='cli'?'ativo':'';
+  if(el('aba-orc')) el('aba-orc').style.display = q==='orc'?'block':'none';
+  if(el('aba-prod')) el('aba-prod').style.display = q==='prod'?'block':'none';
+  if(el('aba-vend')) el('aba-vend').style.display = q==='vend'?'block':'none';
+  if(el('aba-hist')) el('aba-hist').style.display = q==='hist'?'block':'none';
+  if(el('aba-cli')) el('aba-cli').style.display = q==='cli'?'block':'none';
+  if(el('tabOrc')) el('tabOrc').className = q==='orc'?'ativo':'';
+  if(el('tabProd')) el('tabProd').className = q==='prod'?'ativo':'';
+  if(el('tabVend')) el('tabVend').className = q==='vend'?'ativo':'';
+  if(el('tabHist')) el('tabHist').className = q==='hist'?'ativo':'';
+  if(el('tabCli')) el('tabCli').className = q==='cli'?'ativo':'';
 }
 let filtroProdutoLista = '';
-function filtrarProdutosLista(){ filtroProdutoLista = document.getElementById('buscaProdutoLista').value.trim().toLowerCase(); renderProdutos(); }
+function filtrarProdutosLista(){ filtroProdutoLista = getVal('buscaProdutoLista').trim().toLowerCase(); renderProdutos(); }
+
+// COLUNAS NA MESMA ORDEM DO THEAD:
+// REFERENCIA | NOME | LOTE | VALIDADE | VALOR | ENTRADA | SAIDA | SALDO | CLASSIFICAÇÃO
+
+function fmtData(v){
+  if(!v) return '-';
+  let s = String(v).trim();
+  // 1) Se já for DD/MM/AAAA, devolve do jeito que tá
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  // 2) Se for AAAA-MM-DD ou com T
+  if(s.includes('T')) s = s.split('T')[0];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const a = s.split('-');
+    return a[2] + '/' + a[1] + '/' + a[0];
+  }
+  // 3) Se for WED MAY 30 2029 00:00:00 GMT... / FRI JUN 01 2029...
+  const meses = {JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12'};
+  const m = s.toUpperCase().match(/(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})\s+(\d{4})/);
+  if(m){
+    const dia = m[2].padStart(2,'0');
+    return dia + '/' + meses[m[1]] + '/' + m[3];
+  }
+  // 4) Última tentativa: new Date()
+  const d = new Date(v);
+  if(!isNaN(d)){
+    return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+  }
+  return s;
+}
+
+function converterValidadeParaInput(v){
+  if(!v) return '';
+  let s = String(v).trim();
+  // Já é AAAA-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if(s.includes('T')) s = s.split('T')[0];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Já é DD/MM/AAAA
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
+    const a = s.split('/');
+    return a[2] + '-' + a[1] + '-' + a[0];
+  }
+  // WED MAY 30 2029...
+  const meses = {JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12'};
+  const m = s.toUpperCase().match(/(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})\s+(\d{4})/);
+  if(m){
+    return m[3] + '-' + meses[m[1]] + '-' + m[2].padStart(2,'0');
+  }
+  const d = new Date(v);
+  if(!isNaN(d)){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  return '';
+}
+// COLUNAS NA MESMA ORDEM DO THEAD:
+// REFERENCIA | NOME | LOTE | VALIDADE | VALOR | ENTRADA | SAIDA | SALDO | CLASSIFICAÇÃO
 function renderProdutos(){
   const tb = document.getElementById('listaProdutos'); if(!tb) return;
   let lista = produtos;
-  if(filtroProdutoLista){ lista = produtos.filter(p => (p.nome||'').toLowerCase().includes(filtroProdutoLista) || (p.cod||'').toString().toLowerCase().includes(filtroProdutoLista) || (p.referencia||'').toLowerCase().includes(filtroProdutoLista) || (p.lote||'').toLowerCase().includes(filtroProdutoLista)); }
+  if(filtroProdutoLista){ lista = produtos.filter(p => (p.nome||'').toLowerCase().includes(filtroProdutoLista) || String(p.referencia||'').toLowerCase().includes(filtroProdutoLista) || (p.lote||'').toLowerCase().includes(filtroProdutoLista)); }
   const msg = document.getElementById('msgProdutos'); if(msg) msg.innerText = lista.length + ' produtos';
-  if(!lista.length){ tb.innerHTML = '<tr><td colspan="8" class="tabela-vazio">NENHUM PRODUTO ENCONTRADO</td></tr>'; return; }
-  tb.innerHTML = lista.map((p,i)=>{
-    const idx = produtos.indexOf(p); const verde = (p.saldo||0) > 0 ? 'linha-verde' : '';
-    return `<tr class="${verde}" onclick="selecionarLinha(this, 'PRODUTO SELECIONADO: ${p.nome} | COD ${p.cod} | R$ ${fmt(p.valor)}', 'selecionadoProduto');selecionarProduto(${idx})"><td>${String(i+1).padStart(3,'0')}</td><td>${p.cod||'-'}</td><td>${p.nome}</td><td>${p.referencia||'-'}</td><td>${p.lote||'-'}</td><td>${p.validade||'-'}</td><td>${p.saldo||0}</td><td>R$ ${fmt(p.valor)}</td></tr>`;
+  if(!lista.length){ tb.innerHTML = '<tr><td colspan="9" class="tabela-vazio">NENHUM PRODUTO ENCONTRADO</td></tr>'; return; }
+  tb.innerHTML = lista.map((p)=>{
+    const idx = produtos.indexOf(p);
+    const verde = (p.saldo||0) > 0 ? 'linha-verde' : '';
+    return `<tr class="${verde}" onclick="selecionarLinha(this, 'PRODUTO SELECIONADO: ${p.nome} | REF ${p.referencia} | R$ ${fmt(p.valor)}', 'selecionadoProduto');selecionarProduto(${idx})">`
+      + `<td>${p.referencia||'-'}</td>`
+      + `<td>${p.nome||''}</td>`
+      + `<td>${p.lote||'-'}</td>`
+      + `<td>${fmtData(p.validade)}</td>`
+      + `<td>R$ ${fmt(p.valor)}</td>`
+      + `<td>${p.entrada||0}</td>`
+      + `<td>${p.saida||0}</td>`
+      + `<td>${p.saldo||0}</td>`
+      + `<td>${p.classificacao||'-'}</td>`
+      + `</tr>`;
   }).join('');
 }
+
 function buscarSaldoPorReferencia(){
-  const ref = (document.getElementById('pReferencia')?.value || '').trim().toUpperCase();
-  const lote = (document.getElementById('pLote')?.value || '').trim().toUpperCase();
-  const validade = document.getElementById('pValidade')?.value || '';
-  const campoSaldo = document.getElementById('pSaldo');
+  const ref = getVal('pReferencia').trim().toUpperCase();
+  const lote = getVal('pLote').trim().toUpperCase();
+  const validade = getVal('pValidade') || '';
+  const campoSaldo = el('pSaldo');
   if(!campoSaldo) return;
   if(!ref){ return; }
   let achados = produtos.filter(p => String(p.referencia || '').trim().toUpperCase() === ref);
@@ -105,21 +176,63 @@ function buscarSaldoPorReferencia(){
   if(!achados.length){ campoSaldo.value = ''; return; }
   campoSaldo.value = achados.reduce((s,p) => s + (Number(p.saldo) || 0), 0);
 }
-function selecionarProduto(i){ const p = produtos[i]; if(!p) return; editProdutoCod = p.cod; document.getElementById('pNome').value = p.nome || ''; document.getElementById('pCodigo').value = p.referencia || ''; document.getElementById('pLote').value = p.lote || ''; document.getElementById('pValor').value = p.valor || ''; const b = document.getElementById('btnSalvarProduto'); if(b) b.innerText = '✏️ Alterar'; }
-function limparProduto(){ editProdutoCod = null; document.getElementById('pNome').value=''; document.getElementById('pCodigo').value=''; document.getElementById('pLote').value=''; document.getElementById('pValor').value=''; const b = document.getElementById('btnSalvarProduto'); if(b) b.innerText = '💾 Salvar'; }
-async function excluirProdutoAtual(){ if(!editProdutoCod){ await mostrarMsgSistema('Clica numa linha da tabela primeiro'); return; } await excluirProduto(editProdutoCod); limparProduto(); }
-async function usarProdutoAtual(){ if(editProdutoCod==null){ await mostrarMsgSistema('Clica numa linha da tabela primeiro'); return; } const idx = produtos.findIndex(p=>String(p.cod)===String(editProdutoCod)); if(idx<0) return; produtoSelecionadoTop = idx; document.getElementById('buscaProdutoTop').value = produtos[idx].nome; adicionarProduto(); mostrarAba('orc'); }
+
+function selecionarProduto(i){
+  const p = produtos[i]; if(!p) return;
+  editProdutoRef = p.referencia;
+  produtoEncontrado = p;
+  // CADA COLUNA VAI PRO CAMPO CERTO, NA MESMA ORDEM DO THEAD
+  setVal('pReferencia', p.referencia);
+  setVal('pNome', p.nome);
+  setVal('pLote', p.lote);
+  setVal('pValidade', converterValidadeParaInput(p.validade));
+  setVal('pValor', p.valor);
+  setVal('pEntrada', p.entrada ?? '');
+  setVal('pSaida', p.saida ?? '');
+  setVal('pSaldo', p.saldo ?? '');
+  setVal('pClassificacao', p.classificacao);
+  const b = el('btnSalvarProduto'); if(b) b.innerText = '✏️ Alterar';
+}
+function limparProduto(){
+  editProdutoRef = null; produtoEncontrado = null;
+  setVal('pReferencia',''); setVal('pNome',''); setVal('pLote',''); setVal('pValor','');
+  setVal('pValidade',''); setVal('pEntrada',''); setVal('pSaida',''); setVal('pSaldo',''); setVal('pClassificacao','');
+  const b = el('btnSalvarProduto'); if(b) b.innerText = '💾 Salvar';
+}
+async function excluirProdutoAtual(){ if(!editProdutoRef){ await mostrarMsgSistema('Clica numa linha da tabela primeiro'); return; } await excluirProduto(editProdutoRef); limparProduto(); }
+async function usarProdutoAtual(){ if(editProdutoRef==null){ await mostrarMsgSistema('Clica numa linha da tabela primeiro'); return; } const idx = produtos.findIndex(p=>String(p.referencia)===String(editProdutoRef)); if(idx<0) return; produtoSelecionadoTop = idx; if(el('buscaProdutoTop')) el('buscaProdutoTop').value = produtos[idx].nome; adicionarProduto(); mostrarAba('orc'); }
 async function salvarProduto(){
-  const nome=document.getElementById('pNome').value.trim().toUpperCase(); const valor=parseFloat(document.getElementById('pValor').value);
-  if(!nome||!valor){ await mostrarMsgSistema('Preencha nome e valor'); return; }
-  const p={nome, referencia:document.getElementById('pCodigo').value.trim(), lote:document.getElementById('pLote').value.trim(), valor};
+  const nome=getVal('pNome').trim().toUpperCase();
+  const referencia=getVal('pReferencia').trim().toUpperCase();
+  const valor=parseFloat(getVal('pValor'));
+  if(!nome||!referencia||!valor){ await mostrarMsgSistema('Preencha referencia, nome e valor'); return; }
+  const p={
+    referencia,
+    nome,
+    lote:getVal('pLote').trim().toUpperCase(),
+    validade:getVal('pValidade') || '',
+    valor,
+    entrada:parseFloat(getVal('pEntrada')) || 0,
+    saida:parseFloat(getVal('pSaida')) || 0,
+    saldo:parseFloat(getVal('pSaldo')) || 0,
+    classificacao:getVal('pClassificacao').trim().toUpperCase()
+  };
   try{
-    if(editProdutoCod){ p.cod = editProdutoCod; await api('salvarProduto', p); const idx = produtos.findIndex(x=>String(x.cod)===String(editProdutoCod)); if(idx>=0) produtos[idx]=p; await mostrarMsgSistema('Produto alterado!'); }
-    else { const r=await api('salvarProduto', p); p.cod=r.cod; p.saldo=0; produtos.push(p); await mostrarMsgSistema('Produto salvo! Cod: '+r.cod); }
+    if(editProdutoRef){
+      await api('salvarProduto', p, editProdutoRef);
+      const idx = produtos.findIndex(x=>String(x.referencia)===String(editProdutoRef));
+      if(idx>=0) produtos[idx]=p;
+      await mostrarMsgSistema('Produto alterado!');
+    } else {
+      if(produtos.some(x=>String(x.referencia)===String(referencia))){ await mostrarMsgSistema('Já existe produto com essa referencia!'); return; }
+      await api('salvarProduto', p, referencia);
+      produtos.push(p);
+      await mostrarMsgSistema('Produto salvo! Ref: '+referencia);
+    }
     renderProdutos(); limparProduto();
   }catch(e){ await mostrarMsgSistema('Erro: '+e.message); }
 }
-async function excluirProduto(cod){ if(!await perguntarSistema('Excluir?')) return; try{ await api('excluirProduto', null, cod); produtos=produtos.filter(p=>String(p.cod)!==String(cod)); renderProdutos(); }catch(e){ await mostrarMsgSistema('Erro: '+e.message); } }
+async function excluirProduto(ref){ if(!await perguntarSistema('Excluir?')) return; try{ await api('excluirProduto', null, ref); produtos=produtos.filter(p=>String(p.referencia)!==String(ref)); renderProdutos(); }catch(e){ await mostrarMsgSistema('Erro: '+e.message); } }
 let produtoEncontrado = null;
 function lerProdutosSalvos(){
   if(window.produtos && window.produtos.length) return window.produtos;
@@ -135,29 +248,27 @@ function lerProdutosSalvos(){
 function buscarPorReferencia(ref){
   ref = String(ref || '').trim().toUpperCase();
   produtoEncontrado = produtos.find(p => String(p.referencia || '').trim().toUpperCase() === ref) || null;
-  document.getElementById('avisoValor').style.display = 'none';
+  const aviso = el('avisoValor'); if(aviso) aviso.style.display = 'none';
   if(!produtoEncontrado) return;
-  document.getElementById('pNome').value = produtoEncontrado.nome || '';
-  document.getElementById('pSaldo').value = produtoEncontrado.saldo ?? '';
-  document.getElementById('pClassificacao').value = produtoEncontrado.classificacao || '';
-  const v = document.getElementById('pValor');
-  if(!v.value) v.value = produtoEncontrado.valor || '';
+  setVal('pNome', produtoEncontrado.nome);
+  setVal('pSaldo', produtoEncontrado.saldo ?? '');
+  setVal('pClassificacao', produtoEncontrado.classificacao);
+  const v = el('pValor');
+  if(v && !v.value) v.value = produtoEncontrado.valor || '';
   verificarValor();
 }
 function verificarValor(){
-  const aviso = document.getElementById('avisoValor');
-  const v = document.getElementById('pValor');
-  if(!produtoEncontrado || !v.value){
-    aviso.style.display = 'none';
-    return;
-  }
+  const aviso = el('avisoValor');
+  const v = el('pValor');
+  if(!aviso || !v) return;
+  if(!produtoEncontrado || !v.value){ aviso.style.display = 'none'; return; }
   const digitado = parseFloat(String(v.value).replace(',', '.'));
   const cadastrado = parseFloat(String(produtoEncontrado.valor).replace(',', '.'));
   aviso.style.display = (digitado !== cadastrado) ? 'block' : 'none';
 }
 function filtrarProdutosPorNome(){
-  const termo = document.getElementById('pNome').value.trim().toLowerCase();
-  const box = document.getElementById('listaBuscaProdutoNome');
+  const termo = getVal('pNome').trim().toLowerCase();
+  const box = el('listaBuscaProdutoNome'); if(!box) return;
   if(!termo){ box.style.display='none'; box.innerHTML=''; return; }
   const achados = produtos.filter(p => (p.nome||'').toLowerCase().includes(termo) || String(p.referencia||'').toLowerCase().includes(termo));
   if(!achados.length){ box.style.display='block'; box.innerHTML='<div class="tabela-vazio">NENHUM PRODUTO</div>'; return; }
@@ -170,30 +281,27 @@ function filtrarProdutosPorNome(){
 function selecionarProdutoPorNome(idx){
   const p = produtos[idx];
   if(!p) return;
-  document.getElementById('listaBuscaProdutoNome').style.display='none';
-  document.getElementById('listaBuscaProdutoNome').innerHTML='';
-  if(document.getElementById('pNome')) document.getElementById('pNome').value = p.nome || '';
-  if(document.getElementById('pCodigo')) document.getElementById('pCodigo').value = p.referencia || '';
-  if(document.getElementById('pReferencia')) document.getElementById('pReferencia').value = p.referencia || '';
-  if(document.getElementById('pLote')) document.getElementById('pLote').value = p.lote || '';
-  if(document.getElementById('pValidade')){
-    let v = String(p.validade || '');
-    if(v.includes('/')){ const a = v.split('/'); v = a[2] + '-' + a[1] + '-' + a[0]; }
-    document.getElementById('pValidade').value = v;
-  }
-  if(document.getElementById('pValor')) document.getElementById('pValor').value = p.valor || '';
-  if(document.getElementById('pEntrada')) document.getElementById('pEntrada').value = p.entrada ?? '';
-  if(document.getElementById('pSaida')) document.getElementById('pSaida').value = p.saida ?? '';
-  if(document.getElementById('pSaldo')) document.getElementById('pSaldo').value = p.saldo ?? '';
-  if(document.getElementById('pClassificacao')) document.getElementById('pClassificacao').value = p.classificacao || '';
+  const box = el('listaBuscaProdutoNome'); if(box){ box.style.display='none'; box.innerHTML=''; }
+  setVal('pNome', p.nome);
+  setVal('pReferencia', p.referencia);
+  setVal('pLote', p.lote);
+  setVal('pValidade', converterValidadeParaInput(p.validade));
+  setVal('pValor', p.valor);
+  setVal('pEntrada', p.entrada ?? '');
+  setVal('pSaida', p.saida ?? '');
+  setVal('pSaldo', p.saldo ?? '');
+  setVal('pClassificacao', p.classificacao);
   produtoEncontrado = p;
+  editProdutoRef = p.referencia;
+  const b = el('btnSalvarProduto'); if(b) b.innerText = '✏️ Alterar';
 }
-document.getElementById('pNome').addEventListener('input', filtrarProdutosPorNome);
+if(el('pNome')) el('pNome').addEventListener('input', filtrarProdutosPorNome);
 ['pReferencia','pLote','pValidade'].forEach(id => {
-  const el = document.getElementById(id);
-  if(el) el.addEventListener('input', function(){
-    buscarPorReferencia(document.getElementById('pReferencia').value);
+  const elm = el(id);
+  if(elm) elm.addEventListener('input', function(){
+    buscarPorReferencia(getVal('pReferencia'));
     buscarSaldoPorReferencia();
   });
 });
+
 apiLeitura('dados').then(d=>{ produtos = d.produtos || []; renderProdutos(); }).catch(e=>mostrarMsgSistema('Erro ao carregar dados: '+e.message));
